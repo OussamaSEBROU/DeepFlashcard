@@ -697,12 +697,8 @@ export default function App() {
 
       {/* Footer */}
       <footer className="mt-32 py-16 border-t border-accent/10 text-center">
-        <div className="flex items-center justify-center gap-2 mb-4">
-          <div className="w-2 h-2 bg-primary rounded-full animate-ping" />
-          <span className="text-xs font-black text-accent dark:text-accent uppercase tracking-[0.4em]">DeepFlashCard v2.0</span>
-        </div>
         <p className="text-accent/40 dark:text-accent/30 text-[10px] font-medium uppercase tracking-widest">
-          &copy; {new Date().getFullYear()} {t.developedBy} Oussama SEBROU. {t.allRightsReserved}
+          &copy; {new Date().getFullYear()} {t.allRightsReserved}
         </p>
       </footer>
     </div>
