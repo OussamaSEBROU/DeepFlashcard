@@ -9,11 +9,15 @@ import { translations } from './translations';
 
 export default function App() {
   const [sets, setSets] = useState<FlashcardSet[]>(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('cards')) return [];
     const saved = localStorage.getItem('flashcard_sets');
     return saved ? JSON.parse(saved) : [];
   });
   
   const [activeSetId, setActiveSetId] = useState<string | null>(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('cards')) return 'shared-set';
     const saved = localStorage.getItem('active_set_id');
     return saved || null;
   });
@@ -23,7 +27,11 @@ export default function App() {
     return saved || 'light';
   });
 
-  const [viewMode, setViewMode] = useState<ViewMode>('manage');
+  const [viewMode, setViewMode] = useState<ViewMode>(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('cards')) return 'present';
+    return 'manage';
+  });
   const [lang, setLang] = useState<Language>(() => {
     const saved = localStorage.getItem('lang') as Language;
     return saved || 'ar';
