@@ -80,9 +80,16 @@ export default function App() {
           cards,
           createdAt: Date.now(),
         };
+        
+        // Update sets to include the shared set
         setSets(prev => [...prev.filter(s => s.id !== 'shared-set'), sharedSet]);
+        
+        // Ensure the shared set is active
         setActiveSetId('shared-set');
+        
+        // Force view mode to present
         setViewMode('present');
+        
         // Clean up URL
         window.history.replaceState({}, document.title, window.location.pathname);
       } catch (e) {
