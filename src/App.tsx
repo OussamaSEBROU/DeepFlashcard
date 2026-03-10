@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Sun, Moon, Layout, BookOpen, Layers, Trash2, Play, Settings2, FolderPlus, Folder, ChevronRight, Plus, Edit3, X, AlertCircle, Languages } from 'lucide-react';
-import LZString from 'lz-string';
+import * as LZString from 'lz-string';
 import { Flashcard, FlashcardSet, Theme, ViewMode, Language } from './types';
 import { FlashcardComponent } from './components/Flashcard';
 import { FlashcardForm } from './components/FlashcardForm';
