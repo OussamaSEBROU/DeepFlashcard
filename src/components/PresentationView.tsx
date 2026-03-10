@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { ChevronLeft, ChevronRight, RotateCcw, Maximize2, Minimize2, Timer, TimerOff, Clock, Music, Music2, Share2 } from 'lucide-react';
+import { ChevronLeft, ChevronRight, RotateCcw, Maximize2, Minimize2, Timer, TimerOff, Clock, Music, Music2, Share2, Check } from 'lucide-react';
 import { Flashcard, Language } from '../types';
 import { useSound } from '../hooks/useSound';
 import { translations } from '../translations';
@@ -214,7 +214,7 @@ export const PresentationView: React.FC<PresentationViewProps> = ({ cards, lang 
             whileHover={{ scale: 1.1 }}
             whileTap={{ scale: 0.9 }}
             onClick={() => {
-              const shareableData = btoa(JSON.stringify(cards));
+              const shareableData = btoa(encodeURIComponent(JSON.stringify(cards)));
               const url = `${window.location.origin}${window.location.pathname}?cards=${shareableData}`;
               navigator.clipboard.writeText(url);
               setIsCopied(true);
@@ -223,7 +223,7 @@ export const PresentationView: React.FC<PresentationViewProps> = ({ cards, lang 
             className={`p-3 rounded-full transition-all ${isCopied ? 'bg-emerald-500 text-white' : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200'}`}
             title="Share Presentation"
           >
-            {isCopied ? <span className="text-xs font-bold px-1">Copied</span> : <Share2 size={20} />}
+            {isCopied ? <Check size={20} /> : <Share2 size={20} />}
           </motion.button>
           <div className="w-px h-8 bg-zinc-200 dark:bg-zinc-700 mx-2" />
           <motion.button 
