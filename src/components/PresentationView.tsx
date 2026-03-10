@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { ChevronLeft, ChevronRight, RotateCcw, Maximize2, Minimize2, Timer, TimerOff, Clock, Music, Music2, Share2, Check } from 'lucide-react';
+import LZString from 'lz-string';
 import { Flashcard, Language } from '../types';
 import { useSound } from '../hooks/useSound';
 import { translations } from '../translations';
@@ -214,7 +215,7 @@ export const PresentationView: React.FC<PresentationViewProps> = ({ cards, lang 
             whileHover={{ scale: 1.1 }}
             whileTap={{ scale: 0.9 }}
             onClick={() => {
-              const shareableData = btoa(encodeURIComponent(JSON.stringify(cards)));
+              const shareableData = LZString.compressToEncodedURIComponent(JSON.stringify(cards));
               const url = `${window.location.origin}${window.location.pathname}?cards=${shareableData}`;
               navigator.clipboard.writeText(url);
               setIsCopied(true);
