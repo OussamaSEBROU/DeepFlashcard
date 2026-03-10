@@ -80,9 +80,11 @@ export default function App() {
           cards,
           createdAt: Date.now(),
         };
-        setSets(prev => [...prev, sharedSet]);
+        setSets(prev => [...prev.filter(s => s.id !== 'shared-set'), sharedSet]);
         setActiveSetId('shared-set');
         setViewMode('present');
+        // Clean up URL
+        window.history.replaceState({}, document.title, window.location.pathname);
       } catch (e) {
         console.error('Failed to parse shared cards', e);
       }
