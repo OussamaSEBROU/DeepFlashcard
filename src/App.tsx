@@ -425,51 +425,51 @@ export default function App() {
 
       {/* Navigation */}
       <nav className="sticky top-0 z-40 bg-white/90 dark:bg-black/90 backdrop-blur-xl border-b border-accent/10">
-        <div className="max-w-6xl mx-auto px-6 h-24 flex items-center justify-between">
-          <div className="flex items-center gap-4">
+        <div className="max-w-6xl mx-auto px-2 md:px-6 h-auto min-h-[80px] py-2 flex flex-wrap items-center justify-between gap-2">
+          <div className="flex items-center gap-2 md:gap-4">
             <motion.div 
               whileHover={{ rotate: 10, scale: 1.1 }}
-              className="w-12 h-12 bg-primary rounded-2xl flex items-center justify-center shadow-[0_8px_20px_rgba(16,185,129,0.3)]"
+              className="w-10 h-10 md:w-12 md:h-12 bg-primary rounded-2xl flex items-center justify-center shadow-[0_8px_20px_rgba(16,185,129,0.3)]"
             >
-              <Layers className="text-white" size={28} />
+              <Layers className="text-white" size={20} md:size={28} />
             </motion.div>
             <div className="flex flex-col">
-              <h1 className="text-2xl font-black tracking-tighter text-black dark:text-white leading-none">{t.appName}</h1>
+              <h1 className="text-lg md:text-2xl font-black tracking-tighter text-black dark:text-white leading-none">{t.appName}</h1>
             </div>
           </div>
           
-          <div className="flex items-center gap-3 md:gap-6">
+          <div className="flex items-center gap-1 md:gap-6">
             {/* Mode Switcher */}
-            <div className="flex bg-zinc-100 dark:bg-zinc-900 p-1.5 rounded-[1.25rem] border border-accent/10">
+            <div className="flex bg-zinc-100 dark:bg-zinc-900 p-1 rounded-[1rem] md:rounded-[1.25rem] border border-accent/10">
               <button
                 onClick={() => setViewMode('manage')}
-                className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-black transition-all ${viewMode === 'manage' ? 'bg-white dark:bg-zinc-800 text-primary shadow-md' : 'text-accent hover:text-black dark:hover:text-zinc-200'}`}
+                className={`flex items-center gap-1 md:gap-2 px-2 md:px-5 py-2 rounded-lg md:rounded-xl text-xs md:text-sm font-black transition-all ${viewMode === 'manage' ? 'bg-white dark:bg-zinc-800 text-primary shadow-md' : 'text-accent hover:text-black dark:hover:text-zinc-200'}`}
               >
-                <Settings2 size={18} />
+                <Settings2 size={16} />
                 <span className="hidden md:inline">{t.setup}</span>
               </button>
               <button
                 onClick={() => setViewMode('present')}
-                className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-black transition-all ${viewMode === 'present' ? 'bg-white dark:bg-zinc-800 text-primary shadow-md' : 'text-accent hover:text-black dark:hover:text-zinc-200'}`}
+                className={`flex items-center gap-1 md:gap-2 px-2 md:px-5 py-2 rounded-lg md:rounded-xl text-xs md:text-sm font-black transition-all ${viewMode === 'present' ? 'bg-white dark:bg-zinc-800 text-primary shadow-md' : 'text-accent hover:text-black dark:hover:text-zinc-200'}`}
               >
-                <Play size={18} />
+                <Play size={16} />
                 <span className="hidden md:inline">{t.present}</span>
               </button>
             </div>
 
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-1">
               <button
                 onClick={() => setLang(prev => prev === 'ar' ? 'en' : 'ar')}
-                className="w-12 h-12 flex items-center justify-center rounded-2xl bg-zinc-100 dark:bg-zinc-900 text-black dark:text-white hover:bg-primary hover:text-white transition-all shadow-sm active:scale-90"
+                className="w-9 h-9 md:w-12 md:h-12 flex items-center justify-center rounded-xl md:rounded-2xl bg-zinc-100 dark:bg-zinc-900 text-black dark:text-white hover:bg-primary hover:text-white transition-all shadow-sm active:scale-90"
                 title={lang === 'ar' ? 'English' : 'العربية'}
               >
-                <Languages size={22} />
+                <Languages size={18} md:size={22} />
               </button>
               <button
                 onClick={toggleTheme}
-                className="w-12 h-12 flex items-center justify-center rounded-2xl bg-zinc-100 dark:bg-zinc-900 text-black dark:text-white hover:bg-primary hover:text-white transition-all shadow-sm active:scale-90"
+                className="w-9 h-9 md:w-12 md:h-12 flex items-center justify-center rounded-xl md:rounded-2xl bg-zinc-100 dark:bg-zinc-900 text-black dark:text-white hover:bg-primary hover:text-white transition-all shadow-sm active:scale-90"
               >
-                {theme === 'light' ? <Moon size={22} /> : <Sun size={22} />}
+                {theme === 'light' ? <Moon size={18} md:size={22} /> : <Sun size={18} md:size={22} />}
               </button>
             </div>
           </div>
