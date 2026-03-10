@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { ChevronLeft, ChevronRight, RotateCcw, Maximize2, Minimize2, Timer, TimerOff, Clock, Music, Music2, Share2, Check } from 'lucide-react';
-import LZString from 'lz-string';
+import * as LZString from 'lz-string';
 import { Flashcard, Language } from '../types';
 import { useSound } from '../hooks/useSound';
 import { translations } from '../translations';
