@@ -1,706 +1,343 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Sun, Moon, Layout, BookOpen, Layers, Trash2, Play, Settings2, FolderPlus, Folder, ChevronRight, Plus, Edit3, X, AlertCircle, Languages } from 'lucide-react';
-import { Flashcard, FlashcardSet, Theme, ViewMode, Language } from './types';
-import { FlashcardComponent } from './components/Flashcard';
-import { FlashcardForm } from './components/FlashcardForm';
-import { PresentationView } from './components/PresentationView';
-import { translations } from './translations';
+import { ChevronLeft, ChevronRight, RotateCcw, Maximize2, Minimize2, Timer, TimerOff, Clock, Music, Music2, Share2, Check } from 'lucide-react';
+import { Flashcard, Language } from '../types';
+import { useSound } from '../hooks/useSound';
+import { translations } from '../translations';
 
-export default function App() {
-  const [sets, setSets] = useState<FlashcardSet[]>(() => {
-    const saved = localStorage.getItem('flashcard_sets');
-    return saved ? JSON.parse(saved) : [];
-  });
+interface PresentationViewProps {
+  cards: Flashcard[];
+  lang: Language;
+}
+
+// Using a more reliable ambient cinematic track
+const RELIABLE_CINEMATIC_URL = 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-8.mp3'; 
+
+export const PresentationView: React.FC<PresentationViewProps> = ({ cards, lang }) => {
+  const [currentIndex, setCurrentIndex] = useState(0);
+  const [isFlipped, setIsFlipped] = useState(false);
+  const [isFullscreen, setIsFullscreen] = useState(false);
+  const [isAutoAdvance, setIsAutoAdvance] = useState(false);
+  const [isCinematicSound, setIsCinematicSound] = useState(false);
+  const [duration, setDuration] = useState(10);
+  const [timeLeft, setTimeLeft] = useState(10);
   
-  const [activeSetId, setActiveSetId] = useState<string | null>(() => {
-    const saved = localStorage.getItem('active_set_id');
-    return saved || null;
-  });
-
-  const [theme, setTheme] = useState<Theme>(() => {
-    const saved = localStorage.getItem('theme') as Theme;
-    return saved || 'light';
-  });
-
-  const [viewMode, setViewMode] = useState<ViewMode>('manage');
-  const [lang, setLang] = useState<Language>(() => {
-    const saved = localStorage.getItem('lang') as Language;
-    return saved || 'ar';
-  });
+  const timerRef = useRef<NodeJS.Timeout | null>(null);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
   
+  const { playSound } = useSound();
   const t = translations[lang];
+
+  // Auto Advance Logic
+  useEffect(() => {
+    if (isAutoAdvance) {
+      setTimeLeft(duration);
+      
+      if (timerRef.current) clearInterval(timerRef.current);
+      
+      timerRef.current = setInterval(() => {
+        setTimeLeft((prev) => {
+          if (prev <= 1) {
+            nextCard();
+            return duration;
+          }
+          return prev - 1;
+        });
+      }, 1000);
+    } else {
+      if (timerRef.current) clearInterval(timerRef.current);
+    }
+
+    return () => {
+      if (timerRef.current) clearInterval(timerRef.current);
+    };
+  }, [isAutoAdvance, currentIndex, duration]);
+
+  const [isCopied, setIsCopied] = useState(false);
   
-  // Modals State
-  const [isNewSetModalOpen, setIsNewSetModalOpen] = useState(false);
-  const [isEditSetModalOpen, setIsEditSetModalOpen] = useState(false);
-  const [isDeleteSetModalOpen, setIsDeleteSetModalOpen] = useState(false);
-  const [isEditCardModalOpen, setIsEditCardModalOpen] = useState(false);
-  const [isDeleteCardModalOpen, setIsDeleteCardModalOpen] = useState(false);
-  const [isClearModalOpen, setIsClearModalOpen] = useState(false);
+  // Cinematic Sound Logic
+  const toggleCinematicSound = () => {
+    const nextState = !isCinematicSound;
+    setIsCinematicSound(nextState);
 
-  // Data State for Modals
-  const [newSetName, setNewSetName] = useState('');
-  const [setToEdit, setSetToEdit] = useState<FlashcardSet | null>(null);
-  const [setToDeleteId, setSetToDeleteId] = useState<string | null>(null);
-  const [cardToEdit, setCardToEdit] = useState<Flashcard | null>(null);
-  const [cardToDeleteId, setCardToDeleteId] = useState<string | null>(null);
-
-  useEffect(() => {
-    localStorage.setItem('flashcard_sets', JSON.stringify(sets));
-  }, [sets]);
-
-  useEffect(() => {
-    if (activeSetId) {
-      localStorage.setItem('active_set_id', activeSetId);
+    if (nextState) {
+      if (!audioRef.current) {
+        audioRef.current = new Audio(RELIABLE_CINEMATIC_URL);
+        audioRef.current.loop = true;
+        audioRef.current.volume = 0.4;
+      }
+      audioRef.current.play().catch(err => {
+        console.error('Cinematic audio failed:', err);
+        setIsCinematicSound(false);
+      });
     } else {
-      localStorage.removeItem('active_set_id');
-    }
-  }, [activeSetId]);
-
-  useEffect(() => {
-    localStorage.setItem('theme', theme);
-    const root = window.document.documentElement;
-    if (theme === 'dark') {
-      root.classList.add('dark');
-    } else {
-      root.classList.remove('dark');
-    }
-  }, [theme]);
-
-  useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    const sharedCards = params.get('cards');
-    if (sharedCards) {
-      try {
-        const cards = JSON.parse(atob(sharedCards));
-        const sharedSet: FlashcardSet = {
-          id: 'shared-set',
-          title: 'Shared Set',
-          cards,
-          createdAt: Date.now(),
-        };
-        setSets(prev => [...prev, sharedSet]);
-        setActiveSetId('shared-set');
-        setViewMode('present');
-      } catch (e) {
-        console.error('Failed to parse shared cards', e);
+      if (audioRef.current) {
+        audioRef.current.pause();
       }
     }
+  };
+
+  useEffect(() => {
+    return () => {
+      if (audioRef.current) {
+        audioRef.current.pause();
+        audioRef.current = null;
+      }
+    };
   }, []);
 
-  // Set Operations
-  const createSet = () => {
-    if (!newSetName.trim()) return;
-    const newSet: FlashcardSet = {
-      id: crypto.randomUUID(),
-      title: newSetName.trim(),
-      cards: [],
-      createdAt: Date.now(),
-    };
-    setSets([newSet, ...sets]);
-    setActiveSetId(newSet.id);
-    setNewSetName('');
-    setIsNewSetModalOpen(false);
+  if (cards.length === 0) {
+    return (
+      <div className="flex flex-col items-center justify-center py-32 text-zinc-400">
+        <p className="text-xl font-medium">{t.noFilesReady}</p>
+      </div>
+    );
+  }
+
+  const currentCard = cards[currentIndex];
+
+  const nextCard = () => {
+    setIsFlipped(false);
+    setCurrentIndex((prev) => (prev + 1) % cards.length);
+    playSound('NEXT');
   };
 
-  const updateSet = () => {
-    if (!setToEdit || !setToEdit.title.trim()) return;
-    setSets(sets.map(s => s.id === setToEdit.id ? { ...s, title: setToEdit.title.trim() } : s));
-    setIsEditSetModalOpen(false);
-    setSetToEdit(null);
+  const prevCard = () => {
+    setIsFlipped(false);
+    setCurrentIndex((prev) => (prev - 1 + cards.length) % cards.length);
+    playSound('SWIPE');
   };
 
-  const confirmDeleteSet = (id: string) => {
-    setSetToDeleteId(id);
-    setIsDeleteSetModalOpen(true);
+  const handleFlip = () => {
+    setIsFlipped(!isFlipped);
+    playSound('FLIP');
   };
 
-  const deleteSet = () => {
-    if (!setToDeleteId) return;
-    setSets(sets.filter(s => s.id !== setToDeleteId));
-    if (activeSetId === setToDeleteId) setActiveSetId(null);
-    setIsDeleteSetModalOpen(false);
-    setSetToDeleteId(null);
+  const toggleFullscreen = () => {
+    if (!document.fullscreenElement) {
+      document.documentElement.requestFullscreen();
+      setIsFullscreen(true);
+    } else {
+      document.exitFullscreen();
+      setIsFullscreen(false);
+    }
   };
-
-  // Card Operations
-  const addCard = (question: string, answer: string) => {
-    if (!activeSetId) return;
-    const newCard: Flashcard = {
-      id: crypto.randomUUID(),
-      question,
-      answer,
-      createdAt: Date.now(),
-    };
-    setSets(sets.map(s => s.id === activeSetId ? { ...s, cards: [newCard, ...s.cards] } : s));
-  };
-
-  const updateCard = () => {
-    if (!cardToEdit || !activeSetId) return;
-    setSets(sets.map(s => s.id === activeSetId ? {
-      ...s,
-      cards: s.cards.map(c => c.id === cardToEdit.id ? cardToEdit : c)
-    } : s));
-    setIsEditCardModalOpen(false);
-    setCardToEdit(null);
-  };
-
-  const confirmDeleteCard = (id: string) => {
-    setCardToDeleteId(id);
-    setIsDeleteCardModalOpen(true);
-  };
-
-  const deleteCard = () => {
-    if (!cardToDeleteId || !activeSetId) return;
-    setSets(sets.map(s => s.id === activeSetId ? { ...s, cards: s.cards.filter(c => c.id !== cardToDeleteId) } : s));
-    setIsDeleteCardModalOpen(false);
-    setCardToDeleteId(null);
-  };
-
-  const clearActiveSet = () => {
-    if (!activeSetId) return;
-    setSets(sets.map(s => s.id === activeSetId ? { ...s, cards: [] } : s));
-    setIsClearModalOpen(false);
-  };
-
-  const moveCardUp = (id: string) => {
-    if (!activeSetId) return;
-    setSets(sets.map(s => {
-      if (s.id !== activeSetId) return s;
-      const index = s.cards.findIndex(c => c.id === id);
-      if (index <= 0) return s;
-      const newCards = [...s.cards];
-      [newCards[index], newCards[index - 1]] = [newCards[index - 1], newCards[index]];
-      return { ...s, cards: newCards };
-    }));
-  };
-
-  const moveCardDown = (id: string) => {
-    if (!activeSetId) return;
-    setSets(sets.map(s => {
-      if (s.id !== activeSetId) return s;
-      const index = s.cards.findIndex(c => c.id === id);
-      if (index === -1 || index >= s.cards.length - 1) return s;
-      const newCards = [...s.cards];
-      [newCards[index], newCards[index + 1]] = [newCards[index + 1], newCards[index]];
-      return { ...s, cards: newCards };
-    }));
-  };
-
-  const toggleTheme = () => {
-    setTheme(prev => prev === 'light' ? 'dark' : 'light');
-  };
-
-  const activeSet = sets.find(s => s.id === activeSetId);
 
   return (
-    <div className="min-h-screen bg-white dark:bg-black transition-colors duration-500 font-sans selection:bg-accent selection:text-white" dir={lang === 'ar' ? 'rtl' : 'ltr'}>
-      {/* New Set Modal */}
-      <AnimatePresence>
-        {isNewSetModalOpen && (
-          <div className="fixed inset-0 z-[70] flex items-center justify-center p-4 bg-black/80 backdrop-blur-md">
-            <motion.div
-              initial={{ opacity: 0, scale: 0.9, y: 20 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.9, y: 20 }}
-              className="bg-white dark:bg-zinc-900 w-full max-w-sm rounded-[2.5rem] p-8 shadow-3xl border border-accent/20"
-            >
-              <h3 className="text-2xl font-black text-black dark:text-white mb-6">{t.newFile}</h3>
-              <input
-                autoFocus
-                type="text"
-                value={newSetName}
-                onChange={(e) => setNewSetName(e.target.value)}
-                onKeyDown={(e) => e.key === 'Enter' && createSet()}
-                placeholder={t.placeholderSetName}
-                className="w-full px-6 py-4 rounded-2xl bg-zinc-50 dark:bg-zinc-800 border-2 border-zinc-100 dark:border-zinc-800 text-black dark:text-white focus:border-accent outline-none transition-all mb-8 font-bold"
-              />
-              <div className="flex gap-4">
-                <button
-                  onClick={() => setIsNewSetModalOpen(false)}
-                  className="flex-1 py-4 rounded-2xl bg-zinc-100 dark:bg-zinc-800 text-accent font-bold hover:bg-zinc-200 transition-all"
-                >
-                  {t.cancel}
-                </button>
-                <button
-                  onClick={createSet}
-                  className="flex-1 py-4 rounded-2xl bg-primary text-white font-bold hover:bg-primary-dark transition-all shadow-lg shadow-primary/30"
-                >
-                  {t.create}
-                </button>
-              </div>
-            </motion.div>
-          </div>
-        )}
-      </AnimatePresence>
+    <div className={`flex flex-col items-center justify-center min-h-[60vh] gap-12 ${isFullscreen ? 'fixed inset-0 z-[100] bg-white dark:bg-black p-8' : ''}`}>
+      {/* Stage Background Decoration */}
+      <div className="absolute inset-0 overflow-hidden pointer-events-none opacity-30 dark:opacity-20">
+        <div className="absolute top-[-10%] left-[-10%] w-[50%] h-[50%] bg-accent/20 rounded-full blur-[150px]" />
+        <div className="absolute bottom-[-10%] right-[-10%] w-[50%] h-[50%] bg-accent/10 rounded-full blur-[150px]" />
+      </div>
 
-      {/* Edit Set Modal */}
-      <AnimatePresence>
-        {isEditSetModalOpen && setToEdit && (
-          <div className="fixed inset-0 z-[70] flex items-center justify-center p-4 bg-black/80 backdrop-blur-md">
-            <motion.div
-              initial={{ opacity: 0, scale: 0.9, y: 20 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.9, y: 20 }}
-              className="bg-white dark:bg-zinc-900 w-full max-w-sm rounded-[2.5rem] p-8 shadow-3xl border border-accent/20"
-            >
-              <h3 className="text-2xl font-black text-black dark:text-white mb-6">{t.editFile}</h3>
-              <input
-                autoFocus
-                type="text"
-                value={setToEdit.title}
-                onChange={(e) => setSetToEdit({ ...setToEdit, title: e.target.value })}
-                onKeyDown={(e) => e.key === 'Enter' && updateSet()}
-                className="w-full px-6 py-4 rounded-2xl bg-zinc-50 dark:bg-zinc-800 border-2 border-zinc-100 dark:border-zinc-800 text-black dark:text-white focus:border-accent outline-none transition-all mb-8 font-bold"
-              />
-              <div className="flex gap-4">
-                <button
-                  onClick={() => setIsEditSetModalOpen(false)}
-                  className="flex-1 py-4 rounded-2xl bg-zinc-100 dark:bg-zinc-800 text-accent font-bold hover:bg-zinc-200 transition-all"
-                >
-                  {t.cancel}
-                </button>
-                <button
-                  onClick={updateSet}
-                  className="flex-1 py-4 rounded-2xl bg-accent text-white font-bold hover:bg-blue-600 transition-all shadow-lg shadow-accent/30"
-                >
-                  {t.update}
-                </button>
-              </div>
-            </motion.div>
-          </div>
-        )}
-      </AnimatePresence>
-
-      {/* Delete Set Confirmation Modal */}
-      <AnimatePresence>
-        {isDeleteSetModalOpen && (
-          <div className="fixed inset-0 z-[80] flex items-center justify-center p-4 bg-black/80 backdrop-blur-md">
-            <motion.div
-              initial={{ opacity: 0, scale: 0.9 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.9 }}
-              className="bg-white dark:bg-zinc-900 w-full max-w-sm rounded-[2.5rem] p-8 shadow-3xl border border-red-500/20 text-center"
-            >
-              <div className="w-20 h-20 bg-red-50 dark:bg-red-900/20 text-red-500 rounded-full flex items-center justify-center mx-auto mb-6">
-                <AlertCircle size={40} />
-              </div>
-              <h3 className="text-2xl font-black text-black dark:text-white mb-2">{t.deleteFile}</h3>
-              <p className="text-zinc-500 dark:text-zinc-400 mb-8 font-medium">{t.deleteFileDesc}</p>
-              <div className="flex gap-4">
-                <button
-                  onClick={() => setIsDeleteSetModalOpen(false)}
-                  className="flex-1 py-4 rounded-2xl bg-zinc-100 dark:bg-zinc-800 text-accent font-bold hover:bg-zinc-200 transition-all"
-                >
-                  {t.cancel}
-                </button>
-                <button
-                  onClick={deleteSet}
-                  className="flex-1 py-4 rounded-2xl bg-red-500 text-white font-bold hover:bg-red-600 transition-all shadow-lg shadow-red-500/30"
-                >
-                  {t.confirmDelete}
-                </button>
-              </div>
-            </motion.div>
-          </div>
-        )}
-      </AnimatePresence>
-
-      {/* Edit Card Modal */}
-      <AnimatePresence>
-        {isEditCardModalOpen && cardToEdit && (
-          <div className="fixed inset-0 z-[70] flex items-center justify-center p-4 bg-black/80 backdrop-blur-md">
-            <motion.div
-              initial={{ opacity: 0, scale: 0.9, y: 40 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.9, y: 40 }}
-              className="bg-white dark:bg-zinc-900 w-full max-w-lg rounded-[2.5rem] p-10 shadow-3d dark:shadow-3d-dark border border-accent/20 relative overflow-hidden"
-            >
-              <div className="absolute top-0 left-0 w-full h-2 bg-accent" />
-              <div className="flex justify-between items-center mb-8">
-                <h2 className="text-3xl font-black text-black dark:text-white tracking-tighter">{t.editCard}</h2>
-                <button onClick={() => setIsEditCardModalOpen(false)} className="w-10 h-10 flex items-center justify-center rounded-full bg-zinc-100 dark:bg-zinc-800 text-accent hover:text-black dark:hover:text-white transition-all">
-                  <X size={24} />
-                </button>
-              </div>
-              <div className="space-y-8">
-                <div className="space-y-3">
-                  <label className="block text-xs font-black text-accent uppercase tracking-widest mr-1">{t.question}</label>
-                  <textarea
-                    value={cardToEdit.question}
-                    onChange={(e) => setCardToEdit({ ...cardToEdit, question: e.target.value })}
-                    className="w-full px-6 py-4 rounded-2xl bg-zinc-50 dark:bg-zinc-800/50 border-2 border-zinc-100 dark:border-zinc-800 text-black dark:text-white focus:border-accent outline-none transition-all resize-none h-32 font-medium"
-                  />
-                </div>
-                <div className="space-y-3">
-                  <label className="block text-xs font-black text-accent uppercase tracking-widest mr-1">{t.answer}</label>
-                  <textarea
-                    value={cardToEdit.answer}
-                    onChange={(e) => setCardToEdit({ ...cardToEdit, answer: e.target.value })}
-                    className="w-full px-6 py-4 rounded-2xl bg-zinc-50 dark:bg-zinc-800/50 border-2 border-zinc-100 dark:border-zinc-800 text-black dark:text-white focus:border-accent outline-none transition-all resize-none h-32 font-medium"
-                  />
-                </div>
-                <button
-                  onClick={updateCard}
-                  className="w-full py-5 bg-accent text-white rounded-2xl font-black text-lg hover:bg-blue-600 transition-all shadow-xl shadow-accent/20"
-                >
-                  {t.updateCardBtn}
-                </button>
-              </div>
-            </motion.div>
-          </div>
-        )}
-      </AnimatePresence>
-
-      {/* Delete Card Confirmation Modal */}
-      <AnimatePresence>
-        {isDeleteCardModalOpen && (
-          <div className="fixed inset-0 z-[80] flex items-center justify-center p-4 bg-black/80 backdrop-blur-md">
-            <motion.div
-              initial={{ opacity: 0, scale: 0.9 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.9 }}
-              className="bg-white dark:bg-zinc-900 w-full max-w-sm rounded-[2.5rem] p-8 shadow-3xl border border-red-500/20 text-center"
-            >
-              <div className="w-20 h-20 bg-red-50 dark:bg-red-900/20 text-red-500 rounded-full flex items-center justify-center mx-auto mb-6">
-                <AlertCircle size={40} />
-              </div>
-              <h3 className="text-2xl font-black text-black dark:text-white mb-2">{t.deleteCard}</h3>
-              <p className="text-zinc-500 dark:text-zinc-400 mb-8 font-medium">{t.deleteCardDesc}</p>
-              <div className="flex gap-4">
-                <button
-                  onClick={() => setIsDeleteCardModalOpen(false)}
-                  className="flex-1 py-4 rounded-2xl bg-zinc-100 dark:bg-zinc-800 text-accent font-bold hover:bg-zinc-200 transition-all"
-                >
-                  {t.cancel}
-                </button>
-                <button
-                  onClick={deleteCard}
-                  className="flex-1 py-4 rounded-2xl bg-red-500 text-white font-bold hover:bg-red-600 transition-all shadow-lg shadow-red-500/30"
-                >
-                  {t.confirmDelete}
-                </button>
-              </div>
-            </motion.div>
-          </div>
-        )}
-      </AnimatePresence>
-
-      {/* Clear Active Set Modal */}
-      <AnimatePresence>
-        {isClearModalOpen && (
-          <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/80 backdrop-blur-md">
-            <motion.div
-              initial={{ opacity: 0, scale: 0.9, rotateX: -20 }}
-              animate={{ opacity: 1, scale: 1, rotateX: 0 }}
-              exit={{ opacity: 0, scale: 0.9, rotateX: -20 }}
-              className="bg-white dark:bg-zinc-900 w-full max-w-sm rounded-[2rem] p-8 shadow-3d dark:shadow-3d-dark border border-accent/20 text-center preserve-3d"
-            >
-              <div className="w-20 h-20 bg-red-50 dark:bg-red-900/20 text-red-500 rounded-full flex items-center justify-center mx-auto mb-6 shadow-inner">
-                <Trash2 size={40} />
-              </div>
-              <h3 className="text-2xl font-black text-black dark:text-white mb-2">{t.clearFile}</h3>
-              <p className="text-zinc-500 dark:text-zinc-400 mb-8 font-medium">{t.clearFileDesc}</p>
-              <div className="flex gap-4">
-                <button
-                  onClick={() => setIsClearModalOpen(false)}
-                  className="flex-1 py-4 rounded-2xl bg-zinc-100 dark:bg-zinc-800 text-accent font-bold hover:bg-zinc-200 dark:hover:bg-zinc-700 transition-all active:scale-95"
-                >
-                  {t.cancel}
-                </button>
-                <button
-                  onClick={clearActiveSet}
-                  className="flex-1 py-4 rounded-2xl bg-red-500 text-white font-bold hover:bg-red-600 transition-all active:scale-95 shadow-lg shadow-red-500/30"
-                >
-                  {t.confirmDelete}
-                </button>
-              </div>
-            </motion.div>
-          </div>
-        )}
-      </AnimatePresence>
-
-      {/* Navigation */}
-      <nav className="sticky top-0 z-40 bg-white/90 dark:bg-black/90 backdrop-blur-xl border-b border-accent/10">
-        <div className="max-w-6xl mx-auto px-6 h-24 flex items-center justify-between">
-          <div className="flex items-center gap-4">
+      {/* Top Controls Bar */}
+      <div className="relative z-10 flex flex-wrap items-center justify-center gap-4">
+        {/* Progress Indicator */}
+        <div className="flex items-center gap-6 bg-white/80 dark:bg-zinc-900/80 backdrop-blur-xl px-8 py-3 rounded-[2rem] border border-accent/20 shadow-3d dark:shadow-3d-dark">
+          <span className="text-sm font-black text-zinc-900 dark:text-white tracking-widest">
+            {currentIndex + 1} / {cards.length}
+          </span>
+          <div className="w-48 h-2 bg-zinc-100 dark:bg-zinc-800 rounded-full overflow-hidden shadow-inner">
             <motion.div 
-              whileHover={{ rotate: 10, scale: 1.1 }}
-              className="w-12 h-12 bg-primary rounded-2xl flex items-center justify-center shadow-[0_8px_20px_rgba(16,185,129,0.3)]"
-            >
-              <Layers className="text-white" size={28} />
-            </motion.div>
-            <div className="flex flex-col">
-              <h1 className="text-2xl font-black tracking-tighter text-black dark:text-white leading-none">{t.appName}</h1>
-            </div>
-          </div>
-          
-          <div className="flex items-center gap-3 md:gap-6">
-            {/* Mode Switcher */}
-            <div className="flex bg-zinc-100 dark:bg-zinc-900 p-1.5 rounded-[1.25rem] border border-accent/10">
-              <button
-                onClick={() => setViewMode('manage')}
-                className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-black transition-all ${viewMode === 'manage' ? 'bg-white dark:bg-zinc-800 text-primary shadow-md' : 'text-accent hover:text-black dark:hover:text-zinc-200'}`}
-              >
-                <Settings2 size={18} />
-                <span className="hidden md:inline">{t.setup}</span>
-              </button>
-              <button
-                onClick={() => setViewMode('present')}
-                className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-black transition-all ${viewMode === 'present' ? 'bg-white dark:bg-zinc-800 text-primary shadow-md' : 'text-accent hover:text-black dark:hover:text-zinc-200'}`}
-              >
-                <Play size={18} />
-                <span className="hidden md:inline">{t.present}</span>
-              </button>
-            </div>
-
-            <div className="flex items-center gap-3">
-              <button
-                onClick={() => setLang(prev => prev === 'ar' ? 'en' : 'ar')}
-                className="w-12 h-12 flex items-center justify-center rounded-2xl bg-zinc-100 dark:bg-zinc-900 text-black dark:text-white hover:bg-primary hover:text-white transition-all shadow-sm active:scale-90"
-                title={lang === 'ar' ? 'English' : 'العربية'}
-              >
-                <Languages size={22} />
-              </button>
-              <button
-                onClick={toggleTheme}
-                className="w-12 h-12 flex items-center justify-center rounded-2xl bg-zinc-100 dark:bg-zinc-900 text-black dark:text-white hover:bg-primary hover:text-white transition-all shadow-sm active:scale-90"
-              >
-                {theme === 'light' ? <Moon size={22} /> : <Sun size={22} />}
-              </button>
-            </div>
+              className="h-full bg-accent shadow-[0_0_15px_rgba(59,130,246,0.5)]"
+              initial={{ width: 0 }}
+              animate={{ width: `${((currentIndex + 1) / cards.length) * 100}%` }}
+            />
           </div>
         </div>
-      </nav>
 
-      <main className="max-w-6xl mx-auto px-6 py-16">
+        {/* Auto Advance Controls */}
+        <div className="flex items-center gap-4 bg-white/80 dark:bg-zinc-900/80 backdrop-blur-xl px-6 py-3 rounded-[2rem] border border-accent/20 shadow-3d dark:shadow-3d-dark">
+          <button 
+            onClick={() => setIsAutoAdvance(!isAutoAdvance)}
+            className={`p-2 rounded-full transition-all ${isAutoAdvance ? 'bg-accent text-white shadow-lg shadow-accent/30' : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-400'}`}
+            title={t.autoAdvance}
+          >
+            {isAutoAdvance ? <Timer size={20} /> : <TimerOff size={20} />}
+          </button>
+          
+          <AnimatePresence>
+            {isAutoAdvance && (
+              <motion.div 
+                initial={{ opacity: 0, width: 0 }}
+                animate={{ opacity: 1, width: 'auto' }}
+                exit={{ opacity: 0, width: 0 }}
+                className="flex items-center gap-3 overflow-hidden whitespace-nowrap"
+              >
+                <div className="h-4 w-px bg-zinc-200 dark:bg-zinc-700 mx-1" />
+                <div className="flex items-center gap-2">
+                  <Clock size={16} className="text-accent" />
+                  <input 
+                    type="number" 
+                    value={duration}
+                    onChange={(e) => setDuration(Math.max(1, parseInt(e.target.value) || 1))}
+                    className="w-12 bg-transparent text-sm font-black text-zinc-900 dark:text-white outline-none border-b border-accent/30 focus:border-accent text-center"
+                  />
+                  <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest">{t.seconds}</span>
+                </div>
+                
+                {/* Countdown Circle */}
+                <div className="relative w-8 h-8 flex items-center justify-center">
+                  <svg className="w-full h-full transform -rotate-90">
+                    <circle
+                      cx="16"
+                      cy="16"
+                      r="14"
+                      stroke="currentColor"
+                      strokeWidth="3"
+                      fill="transparent"
+                      className="text-zinc-100 dark:text-zinc-800"
+                    />
+                    <motion.circle
+                      cx="16"
+                      cy="16"
+                      r="14"
+                      stroke="currentColor"
+                      strokeWidth="3"
+                      fill="transparent"
+                      strokeDasharray="88"
+                      animate={{ strokeDashoffset: 88 - (88 * timeLeft) / duration }}
+                      className="text-accent"
+                    />
+                  </svg>
+                  <span className="absolute text-[10px] font-black text-zinc-900 dark:text-white">{timeLeft}</span>
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </div>
+
+        {/* Cinematic Sound Toggle */}
+        <div className="flex items-center bg-white/80 dark:bg-zinc-900/80 backdrop-blur-xl px-4 py-3 rounded-[2rem] border border-accent/20 shadow-3d dark:shadow-3d-dark">
+          <motion.button 
+            whileHover={{ scale: 1.1 }}
+            whileTap={{ scale: 0.9 }}
+            onClick={() => {
+              const shareableData = btoa(encodeURIComponent(JSON.stringify(cards)));
+              const url = `${window.location.origin}${window.location.pathname}?cards=${shareableData}`;
+              navigator.clipboard.writeText(url);
+              setIsCopied(true);
+              setTimeout(() => setIsCopied(false), 2000);
+            }}
+            className={`p-3 rounded-full transition-all ${isCopied ? 'bg-emerald-500 text-white' : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200'}`}
+            title="Share Presentation"
+          >
+            {isCopied ? <Check size={20} /> : <Share2 size={20} />}
+          </motion.button>
+          <div className="w-px h-8 bg-zinc-200 dark:bg-zinc-700 mx-2" />
+          <motion.button 
+            whileHover={{ scale: 1.1 }}
+            whileTap={{ scale: 0.9 }}
+            onClick={toggleCinematicSound}
+            className={`p-3 rounded-full transition-all relative flex items-center justify-center ${isCinematicSound ? 'bg-emerald-500 text-white shadow-lg shadow-emerald-500/30' : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200'}`}
+            title={t.cinematicSound}
+          >
+            {isCinematicSound ? (
+              <div className="relative flex items-center justify-center">
+                <Music size={20} className="relative z-10" />
+                <motion.div 
+                  animate={{ scale: [1, 1.8, 1], opacity: [0.3, 0, 0.3] }}
+                  transition={{ repeat: Infinity, duration: 2 }}
+                  className="absolute inset-0 bg-white rounded-full pointer-events-none"
+                />
+              </div>
+            ) : <Music2 size={20} />}
+          </motion.button>
+        </div>
+      </div>
+
+      {/* Main Card Stage */}
+      <div className="relative w-full max-w-3xl aspect-[16/10] perspective-2000 group">
         <AnimatePresence mode="wait">
-          {viewMode === 'manage' ? (
+          <motion.div
+            key={currentCard.id}
+            initial={{ opacity: 0, scale: 0.8, rotateX: 20 }}
+            animate={{ opacity: 1, scale: 1, rotateX: 0 }}
+            exit={{ opacity: 0, scale: 0.8, rotateX: -20 }}
+            transition={{ type: 'spring', stiffness: 100, damping: 20 }}
+            className="w-full h-full"
+          >
             <motion.div
-              key="manage"
-              initial={{ opacity: 0, scale: 0.95 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.95 }}
-              transition={{ duration: 0.5, type: 'spring' }}
+              className="w-full h-full relative preserve-3d cursor-pointer"
+              animate={{ rotateY: isFlipped ? 180 : 0 }}
+              transition={{ duration: 0.8, type: 'spring', stiffness: 150, damping: 25 }}
+              onClick={handleFlip}
             >
-              {/* Folders Sidebar/Grid */}
-              <div className="grid grid-cols-1 lg:grid-cols-[300px_1fr] gap-12">
-                <aside className="space-y-8">
-                  <div className="flex items-center justify-between">
-                    <h3 className="text-xl font-black text-black dark:text-white">{t.myFiles}</h3>
-                    <button 
-                      onClick={() => setIsNewSetModalOpen(true)}
-                      className="p-2 rounded-xl bg-primary/10 text-primary hover:bg-primary hover:text-white transition-all"
-                    >
-                      <FolderPlus size={20} />
-                    </button>
-                  </div>
-                  
-                  <div className="space-y-3">
-                    {sets.map(set => (
-                      <div key={set.id} className="group relative">
-                        <button
-                          onClick={() => setActiveSetId(set.id)}
-                          className={`w-full flex items-center gap-4 p-4 rounded-2xl transition-all text-right ${activeSetId === set.id ? 'bg-primary text-white shadow-lg shadow-primary/20' : 'bg-zinc-50 dark:bg-zinc-900 text-accent dark:text-accent hover:bg-zinc-100 dark:hover:bg-zinc-800'}`}
-                        >
-                          <Folder size={20} className={activeSetId === set.id ? 'text-white' : 'text-primary'} />
-                          <div className="flex-1 overflow-hidden">
-                            <p className="font-bold truncate">{set.title}</p>
-                            <p className={`text-[10px] font-black uppercase tracking-widest ${activeSetId === set.id ? 'text-white/60' : 'text-accent'}`}>{set.cards.length} {t.cardsCount}</p>
-                          </div>
-                          <ChevronRight size={16} className={`${activeSetId === set.id ? 'text-white' : 'text-accent'} ${lang === 'en' ? 'rotate-180' : ''}`} />
-                        </button>
-                        <div className="absolute left-2 top-1/2 -translate-y-1/2 flex gap-1 opacity-0 group-hover:opacity-100 transition-all">
-                          <button 
-                            onClick={(e) => { e.stopPropagation(); setSetToEdit(set); setIsEditSetModalOpen(true); }}
-                            className="p-2 text-primary hover:bg-primary/10 rounded-xl"
-                          >
-                            <Edit3 size={16} />
-                          </button>
-                          <button 
-                            onClick={(e) => { e.stopPropagation(); confirmDeleteSet(set.id); }}
-                            className="p-2 text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-xl"
-                          >
-                            <Trash2 size={16} />
-                          </button>
-                        </div>
-                      </div>
-                    ))}
-                    {sets.length === 0 && (
-                      <div className="text-center py-8 border-2 border-dashed border-zinc-100 dark:border-zinc-800 rounded-3xl">
-                        <p className="text-xs font-bold text-accent">{t.noFiles}</p>
-                      </div>
-                    )}
-                  </div>
-                </aside>
-
-                <div className="space-y-12">
-                  {activeSet ? (
-                    <>
-                      <header className="flex flex-col md:flex-row md:items-end justify-between gap-6">
-                        <div>
-                          <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-accent/10 text-accent text-[10px] font-black uppercase tracking-widest mb-4 border border-accent/20">
-                            <BookOpen size={12} />
-                            <span>{t.activeFile}</span>
-                          </div>
-                          <h2 className="text-4xl md:text-5xl font-black text-black dark:text-white tracking-tighter">
-                            {activeSet.title}
-                          </h2>
-                        </div>
-                        <button
-                          onClick={() => setIsClearModalOpen(true)}
-                          className="flex items-center gap-2 px-6 py-3 text-sm font-black text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-2xl transition-all"
-                        >
-                          <Trash2 size={18} />
-                          <span>{t.clearFile}</span>
-                        </button>
-                      </header>
-
-                      <FlashcardForm onAdd={addCard} lang={lang} />
-
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                        <AnimatePresence mode="popLayout">
-                          {activeSet.cards.map((card) => (
-                            <motion.div
-                              key={card.id}
-                              layout
-                              initial={{ opacity: 0, y: 30 }}
-                              animate={{ opacity: 1, y: 0 }}
-                              exit={{ opacity: 0, scale: 0.8 }}
-                              className="floating-3d"
-                            >
-                              <FlashcardComponent 
-                                card={card} 
-                                onDelete={confirmDeleteCard} 
-                                onEdit={(c) => { setCardToEdit(c); setIsEditCardModalOpen(true); }} 
-                                onMoveUp={moveCardUp}
-                                onMoveDown={moveCardDown}
-                                lang={lang}
-                              />
-                            </motion.div>
-                          ))}
-                        </AnimatePresence>
-                      </div>
-
-                      {activeSet.cards.length === 0 && (
-                        <div className="flex flex-col items-center justify-center py-32 text-zinc-200 dark:text-zinc-800">
-                          <Plus size={48} className="mb-4 opacity-20" />
-                          <p className="text-xl font-black opacity-30">{t.newCard}</p>
-                        </div>
-                      )}
-                    </>
-                  ) : (
-                    <div className="h-full flex flex-col items-center justify-center py-32 text-center">
-                      <div className="w-24 h-24 bg-accent/5 rounded-full flex items-center justify-center mb-8">
-                        <Folder size={48} className="text-accent opacity-20" />
-                      </div>
-                      <h2 className="text-3xl font-black text-black dark:text-white mb-4">{t.chooseFile}</h2>
-                      <p className="text-zinc-500 dark:text-zinc-400 max-w-sm mx-auto font-medium">
-                        {t.chooseFileDesc}
-                      </p>
-                      <button 
-                        onClick={() => setIsNewSetModalOpen(true)}
-                        className="mt-8 px-8 py-4 bg-primary text-white rounded-2xl font-black shadow-lg shadow-primary/20 hover:scale-105 transition-all"
-                      >
-                        {t.newFile}
-                      </button>
-                    </div>
-                  )}
+              {/* Front */}
+              <div className="absolute inset-0 w-full h-full backface-hidden bg-white dark:bg-zinc-900 border-2 border-accent/10 dark:border-accent/5 rounded-[3rem] shadow-3d dark:shadow-3d-dark flex flex-col items-center justify-center p-16 text-center overflow-hidden shining-border">
+                <div className="absolute top-0 left-0 w-full h-3 bg-primary" />
+                <span className="absolute top-10 right-12 text-xs font-black uppercase tracking-[0.5em] text-accent/40 dark:text-accent/20">{t.question}</span>
+                <h3 className="text-4xl md:text-5xl font-black text-zinc-900 dark:text-zinc-100 leading-tight tracking-tight">
+                  {currentCard.question}
+                </h3>
+                <div className="mt-16 flex flex-col items-center gap-4 text-accent">
+                  <motion.div 
+                    animate={{ y: [0, 10, 0] }}
+                    transition={{ repeat: Infinity, duration: 2 }}
+                  >
+                    <RotateCcw size={32} />
+                  </motion.div>
+                  <span className="text-xs font-black uppercase tracking-[0.3em] opacity-40">{t.revealAnswer}</span>
                 </div>
               </div>
-            </motion.div>
-          ) : (
-            <motion.div
-              key="present"
-              initial={{ opacity: 0, scale: 1.05 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 1.05 }}
-              transition={{ duration: 0.6 }}
-            >
-              {activeSet ? (
-                <>
-                  <header className="mb-16 text-center">
-                    <button 
-                      onClick={() => setActiveSetId(null)}
-                      className="inline-flex items-center gap-2 px-6 py-2.5 rounded-full bg-accent text-white text-xs font-black uppercase tracking-widest mb-8 shadow-xl hover:scale-105 transition-all"
-                    >
-                      <ChevronRight size={16} className={lang === 'en' ? 'rotate-180' : ''} />
-                      <span>{t.backToFiles}</span>
-                    </button>
-                    <h2 className="text-5xl md:text-6xl font-black text-black dark:text-white mb-6 tracking-tighter">
-                      {t.presentingFile}: <span className="text-primary">{activeSet.title}</span>
-                    </h2>
-                    <p className="text-lg text-zinc-500 dark:text-zinc-400 font-medium">
-                      {activeSet.cards.length} {t.cardsReady}
-                    </p>
-                  </header>
-                  <PresentationView cards={activeSet.cards} lang={lang} />
-                </>
-              ) : (
-                <div className="max-w-4xl mx-auto">
-                  <header className="mb-16 text-center">
-                    <div className="inline-flex items-center gap-2 px-6 py-2.5 rounded-full bg-accent/10 text-accent text-xs font-black uppercase tracking-widest mb-8 border border-accent/20">
-                      <Play size={16} fill="currentColor" />
-                      <span>{t.libraryDesc}</span>
-                    </div>
-                    <h2 className="text-5xl md:text-6xl font-black text-black dark:text-white mb-6 tracking-tighter">
-                      {t.library} <span className="text-primary">{t.present}</span>
-                    </h2>
-                  </header>
 
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-                    {sets.map(set => (
-                      <motion.button
-                        key={set.id}
-                        whileHover={{ scale: 1.05, y: -10 }}
-                        whileTap={{ scale: 0.95 }}
-                        onClick={() => setActiveSetId(set.id)}
-                        className="group relative bg-white dark:bg-zinc-900 p-8 rounded-[2.5rem] border-2 border-zinc-50 dark:border-zinc-800 shadow-3d dark:shadow-3d-dark text-right overflow-hidden transition-all hover:border-primary"
-                      >
-                        <div className="absolute top-0 left-0 w-full h-2 bg-primary opacity-20 group-hover:opacity-100 transition-opacity" />
-                        <div className="w-16 h-16 bg-accent/10 rounded-2xl flex items-center justify-center mb-6 group-hover:bg-primary group-hover:text-white transition-all">
-                          <Folder size={32} className="text-accent group-hover:text-white" />
-                        </div>
-                        <h3 className="text-2xl font-black text-black dark:text-white mb-2 truncate">{set.title}</h3>
-                        <p className="text-sm font-bold text-accent uppercase tracking-widest">{set.cards.length} {t.cardsCount}</p>
-                        
-                        <div className="mt-8 flex items-center gap-2 text-primary font-black text-xs uppercase tracking-widest opacity-0 group-hover:opacity-100 transition-all">
-                          <span>{t.startNow}</span>
-                          <ChevronRight size={14} className={lang === 'ar' ? 'rotate-180' : ''} />
-                        </div>
-                      </motion.button>
-                    ))}
-                  </div>
-
-                  {sets.length === 0 && (
-                    <div className="text-center py-32">
-                      <div className="w-24 h-24 bg-zinc-50 dark:bg-zinc-900 rounded-full flex items-center justify-center mx-auto mb-8">
-                        <Layers size={48} className="text-zinc-200 dark:text-zinc-800" />
-                      </div>
-                      <h3 className="text-2xl font-black text-black dark:text-white mb-4">{t.noFilesReady}</h3>
-                      <p className="text-zinc-500 dark:text-zinc-400 mb-8">{t.noFilesReadyDesc}</p>
-                      <button 
-                        onClick={() => setViewMode('manage')}
-                        className="px-8 py-4 bg-primary text-white rounded-2xl font-black shadow-lg shadow-primary/20"
-                      >
-                        {t.goToManage}
-                      </button>
-                    </div>
-                  )}
-                </div>
-              )}
+              {/* Back */}
+              <div className="absolute inset-0 w-full h-full backface-hidden bg-zinc-950 dark:bg-white border-2 border-accent/20 dark:border-accent/10 rounded-[3rem] shadow-3d dark:shadow-3d-dark flex flex-col items-center justify-center p-16 text-center rotate-y-180 overflow-hidden">
+                <div className="absolute top-0 left-0 w-full h-3 bg-primary" />
+                <span className="absolute top-10 right-12 text-xs font-black uppercase tracking-[0.5em] text-white/20 dark:text-black/20">{t.answer}</span>
+                <p className="text-4xl md:text-5xl font-black text-white dark:text-zinc-950 leading-tight tracking-tight">
+                  {currentCard.answer}
+                </p>
+              </div>
             </motion.div>
-          )}
+          </motion.div>
         </AnimatePresence>
-      </main>
 
-      {/* Footer */}
-      <footer className="mt-32 py-16 border-t border-accent/10 text-center">
-        <p className="text-accent/40 dark:text-accent/30 text-[10px] font-medium uppercase tracking-widest">
-          &copy; {new Date().getFullYear()} {t.allRightsReserved}
-        </p>
-      </footer>
+        {/* Navigation Controls Overlaid */}
+        <div className="absolute top-1/2 -translate-y-1/2 -left-24 md:-left-32 hidden sm:block">
+          <motion.button 
+            whileHover={{ scale: 1.1, x: -5 }}
+            whileTap={{ scale: 0.9 }}
+            onClick={lang === 'ar' ? prevCard : nextCard}
+            className="p-6 rounded-[2rem] bg-white dark:bg-zinc-900 border-2 border-accent/10 dark:border-accent/5 text-zinc-900 dark:text-white shadow-3d dark:shadow-3d-dark hover:border-accent transition-all"
+          >
+            {lang === 'ar' ? <ChevronRight size={40} /> : <ChevronLeft size={40} />}
+          </motion.button>
+        </div>
+        <div className="absolute top-1/2 -translate-y-1/2 -right-24 md:-right-32 hidden sm:block">
+          <motion.button 
+            whileHover={{ scale: 1.1, x: 5 }}
+            whileTap={{ scale: 0.9 }}
+            onClick={lang === 'ar' ? nextCard : prevCard}
+            className="p-6 rounded-[2rem] bg-white dark:bg-zinc-900 border-2 border-accent/10 dark:border-accent/5 text-zinc-900 dark:text-white shadow-3d dark:shadow-3d-dark hover:border-accent transition-all"
+          >
+            {lang === 'ar' ? <ChevronLeft size={40} /> : <ChevronRight size={40} />}
+          </motion.button>
+        </div>
+      </div>
+
+      {/* Bottom Controls */}
+      <div className="relative z-10 flex items-center gap-8">
+        <div className="flex sm:hidden gap-6">
+          <button onClick={prevCard} className="p-5 rounded-2xl bg-white dark:bg-zinc-900 border border-accent/20 text-zinc-900 dark:text-white shadow-xl">
+            {lang === 'ar' ? <ChevronRight size={28} /> : <ChevronLeft size={28} />}
+          </button>
+          <button onClick={nextCard} className="p-5 rounded-2xl bg-white dark:bg-zinc-900 border border-accent/20 text-zinc-900 dark:text-white shadow-xl">
+            {lang === 'ar' ? <ChevronLeft size={28} /> : <ChevronRight size={28} />}
+          </button>
+        </div>
+        
+        <motion.button 
+          whileHover={{ scale: 1.05 }}
+          whileTap={{ scale: 0.95 }}
+          onClick={toggleFullscreen}
+          className="flex items-center gap-3 px-8 py-4 rounded-[1.5rem] bg-accent text-white font-black hover:bg-blue-600 transition-all shadow-[0_10px_30px_rgba(59,130,246,0.3)]"
+        >
+          {isFullscreen ? <Minimize2 size={24} /> : <Maximize2 size={24} />}
+          <span className="tracking-widest">{isFullscreen ? t.exitFullscreen : t.fullscreen}</span>
+        </motion.button>
+      </div>
     </div>
   );
-}
+};
