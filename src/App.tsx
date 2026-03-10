@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Sun, Moon, Layout, BookOpen, Layers, Trash2, Play, Settings2, FolderPlus, Folder, ChevronRight, Plus, Edit3, X, AlertCircle, Languages } from 'lucide-react';
-import * as LZString from 'lz-string';
 import { Flashcard, FlashcardSet, Theme, ViewMode, Language } from './types';
 import { FlashcardComponent } from './components/Flashcard';
 import { FlashcardForm } from './components/FlashcardForm';
@@ -10,11 +9,15 @@ import { translations } from './translations';
 
 export default function App() {
   const [sets, setSets] = useState<FlashcardSet[]>(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('cards')) return [];
     const saved = localStorage.getItem('flashcard_sets');
     return saved ? JSON.parse(saved) : [];
   });
   
   const [activeSetId, setActiveSetId] = useState<string | null>(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('cards')) return 'shared-set';
     const saved = localStorage.getItem('active_set_id');
     return saved || null;
   });
@@ -24,10 +27,10 @@ export default function App() {
     return saved || 'light';
   });
 
-  const [viewMode, setViewMode] = useState<ViewMode>('manage');
-  const [isSharedSetLoading, setIsSharedSetLoading] = useState(() => {
+  const [viewMode, setViewMode] = useState<ViewMode>(() => {
     const params = new URLSearchParams(window.location.search);
-    return !!params.get('cards');
+    if (params.get('cards')) return 'present';
+    return 'manage';
   });
   const [lang, setLang] = useState<Language>(() => {
     const saved = localStorage.getItem('lang') as Language;
@@ -78,7 +81,7 @@ export default function App() {
     const sharedCards = params.get('cards');
     if (sharedCards) {
       try {
-        const cards = JSON.parse(LZString.decompressFromEncodedURIComponent(sharedCards));
+        const cards = JSON.parse(decodeURIComponent(atob(sharedCards)));
         const sharedSet: FlashcardSet = {
           id: 'shared-set',
           title: 'Shared Set',
@@ -86,19 +89,20 @@ export default function App() {
           createdAt: Date.now(),
         };
         
+        // Update sets to include the shared set
         setSets(prev => [...prev.filter(s => s.id !== 'shared-set'), sharedSet]);
+        
+        // Ensure the shared set is active
         setActiveSetId('shared-set');
+        
+        // Force view mode to present
         setViewMode('present');
         
         // Clean up URL
         window.history.replaceState({}, document.title, window.location.pathname);
       } catch (e) {
         console.error('Failed to parse shared cards', e);
-      } finally {
-        setIsSharedSetLoading(false);
       }
-    } else {
-      setIsSharedSetLoading(false);
     }
   }, []);
 
@@ -209,11 +213,6 @@ export default function App() {
 
   return (
     <div className="min-h-screen bg-white dark:bg-black transition-colors duration-500 font-sans selection:bg-accent selection:text-white" dir={lang === 'ar' ? 'rtl' : 'ltr'}>
-      {isSharedSetLoading && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-white dark:bg-black text-accent font-black text-2xl">
-          {t.loading || 'Loading...'}
-        </div>
-      )}
       {/* New Set Modal */}
       <AnimatePresence>
         {isNewSetModalOpen && (
