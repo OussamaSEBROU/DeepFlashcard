@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { ChevronLeft, ChevronRight, RotateCcw, Maximize2, Minimize2, Timer, TimerOff, Clock, Music, Music2 } from 'lucide-react';
+import { ChevronLeft, ChevronRight, RotateCcw, Maximize2, Minimize2, Timer, TimerOff, Clock, Music, Music2, Share2 } from 'lucide-react';
 import { Flashcard, Language } from '../types';
 import { useSound } from '../hooks/useSound';
 import { translations } from '../translations';
@@ -208,6 +208,21 @@ export const PresentationView: React.FC<PresentationViewProps> = ({ cards, lang 
 
         {/* Cinematic Sound Toggle */}
         <div className="flex items-center bg-white/80 dark:bg-zinc-900/80 backdrop-blur-xl px-4 py-3 rounded-[2rem] border border-accent/20 shadow-3d dark:shadow-3d-dark">
+          <motion.button 
+            whileHover={{ scale: 1.1 }}
+            whileTap={{ scale: 0.9 }}
+            onClick={() => {
+              const shareableData = btoa(JSON.stringify(cards));
+              const url = `${window.location.origin}${window.location.pathname}?cards=${shareableData}`;
+              navigator.clipboard.writeText(url);
+              alert('Link copied to clipboard!');
+            }}
+            className="p-3 rounded-full transition-all bg-zinc-100 dark:bg-zinc-800 text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200"
+            title="Share Presentation"
+          >
+            <Share2 size={20} />
+          </motion.button>
+          <div className="w-px h-8 bg-zinc-200 dark:bg-zinc-700 mx-2" />
           <motion.button 
             whileHover={{ scale: 1.1 }}
             whileTap={{ scale: 0.9 }}
