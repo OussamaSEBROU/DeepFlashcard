@@ -69,8 +69,25 @@ export default function App() {
   }, [theme]);
 
   useEffect(() => {
-    localStorage.setItem('lang', lang);
-  }, [lang]);
+    const params = new URLSearchParams(window.location.search);
+    const sharedCards = params.get('cards');
+    if (sharedCards) {
+      try {
+        const cards = JSON.parse(atob(sharedCards));
+        const sharedSet: FlashcardSet = {
+          id: 'shared-set',
+          title: 'Shared Set',
+          cards,
+          createdAt: Date.now(),
+        };
+        setSets(prev => [...prev, sharedSet]);
+        setActiveSetId('shared-set');
+        setViewMode('present');
+      } catch (e) {
+        console.error('Failed to parse shared cards', e);
+      }
+    }
+  }, []);
 
   // Set Operations
   const createSet = () => {
@@ -145,6 +162,30 @@ export default function App() {
     if (!activeSetId) return;
     setSets(sets.map(s => s.id === activeSetId ? { ...s, cards: [] } : s));
     setIsClearModalOpen(false);
+  };
+
+  const moveCardUp = (id: string) => {
+    if (!activeSetId) return;
+    setSets(sets.map(s => {
+      if (s.id !== activeSetId) return s;
+      const index = s.cards.findIndex(c => c.id === id);
+      if (index <= 0) return s;
+      const newCards = [...s.cards];
+      [newCards[index], newCards[index - 1]] = [newCards[index - 1], newCards[index]];
+      return { ...s, cards: newCards };
+    }));
+  };
+
+  const moveCardDown = (id: string) => {
+    if (!activeSetId) return;
+    setSets(sets.map(s => {
+      if (s.id !== activeSetId) return s;
+      const index = s.cards.findIndex(c => c.id === id);
+      if (index === -1 || index >= s.cards.length - 1) return s;
+      const newCards = [...s.cards];
+      [newCards[index], newCards[index + 1]] = [newCards[index + 1], newCards[index]];
+      return { ...s, cards: newCards };
+    }));
   };
 
   const toggleTheme = () => {
@@ -533,6 +574,8 @@ export default function App() {
                                 card={card} 
                                 onDelete={confirmDeleteCard} 
                                 onEdit={(c) => { setCardToEdit(c); setIsEditCardModalOpen(true); }} 
+                                onMoveUp={moveCardUp}
+                                onMoveDown={moveCardDown}
                                 lang={lang}
                               />
                             </motion.div>
