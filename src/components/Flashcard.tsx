@@ -26,7 +26,7 @@ export const FlashcardComponent: React.FC<FlashcardProps> = ({ card, onDelete, o
   };
 
   return (
-    <div className="relative h-64 md:h-72 w-full perspective-2000 group">
+    <div className="relative h-52 md:h-72 w-full perspective-2000 group">
       <motion.div
         className="w-full h-full relative preserve-3d cursor-pointer"
         initial={false}
@@ -35,26 +35,26 @@ export const FlashcardComponent: React.FC<FlashcardProps> = ({ card, onDelete, o
         onClick={handleFlip}
       >
         {/* Front Side */}
-        <div className="absolute inset-0 w-full h-full backface-hidden bg-white dark:bg-zinc-900 border-2 border-accent/10 dark:border-accent/5 rounded-[2rem] shadow-3d dark:shadow-3d-dark flex flex-col items-center justify-center p-6 md:p-10 text-center shining-border overflow-hidden">
+        <div className="absolute inset-0 w-full h-full backface-hidden bg-white dark:bg-zinc-900 border-2 border-accent/10 dark:border-accent/5 rounded-[2rem] shadow-3d dark:shadow-3d-dark flex flex-col items-center justify-center p-4 md:p-10 text-center shining-border overflow-hidden">
           <div className="absolute top-0 left-0 w-full h-1.5 bg-primary" />
           <span className="absolute top-4 right-6 md:top-6 md:right-8 text-[8px] md:text-[10px] font-black uppercase tracking-[0.2em] md:tracking-[0.3em] text-accent">{t.question}</span>
-          <h3 className="text-xl md:text-2xl font-bold text-black dark:text-zinc-100 leading-snug">
+          <h3 className="text-lg md:text-2xl font-bold text-black dark:text-zinc-100 leading-snug">
             {card.question}
           </h3>
           <motion.div 
             animate={{ y: [0, 5, 0] }}
             transition={{ repeat: Infinity, duration: 2 }}
-            className="mt-6 md:mt-8 text-accent opacity-40 group-hover:opacity-100 transition-opacity"
+            className="mt-4 md:mt-8 text-accent opacity-40 group-hover:opacity-100 transition-opacity"
           >
-            <RotateCcw size={20} md:size={24} />
+            <RotateCcw size={16} className="md:w-6 md:h-6" />
           </motion.div>
         </div>
 
         {/* Back Side */}
-        <div className="absolute inset-0 w-full h-full backface-hidden bg-zinc-950 dark:bg-white border-2 border-accent/20 dark:border-accent/10 rounded-[2rem] shadow-3d dark:shadow-3d-dark flex flex-col items-center justify-center p-6 md:p-10 text-center rotate-y-180 overflow-hidden">
+        <div className="absolute inset-0 w-full h-full backface-hidden bg-zinc-950 dark:bg-white border-2 border-accent/20 dark:border-accent/10 rounded-[2rem] shadow-3d dark:shadow-3d-dark flex flex-col items-center justify-center p-4 md:p-10 text-center rotate-y-180 overflow-hidden">
           <div className="absolute top-0 left-0 w-full h-1.5 bg-primary" />
           <span className="absolute top-4 right-6 md:top-6 md:right-8 text-[8px] md:text-[10px] font-black uppercase tracking-[0.2em] md:tracking-[0.3em] text-accent">{t.answer}</span>
-          <p className="text-xl md:text-2xl font-bold text-white dark:text-black leading-snug">
+          <p className="text-lg md:text-2xl font-bold text-white dark:text-black leading-snug">
             {card.answer}
           </p>
         </div>
