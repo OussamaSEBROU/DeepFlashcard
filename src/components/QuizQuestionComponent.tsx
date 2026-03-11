@@ -31,19 +31,22 @@ export const QuizQuestionComponent: React.FC<QuizQuestionProps> = ({ question, o
         </h3>
         
         <div className="space-y-2">
-          {question.options.map((option, index) => (
-            <div 
-              key={index} 
-              className={`flex items-center gap-3 p-3 rounded-xl border-2 transition-all ${index === question.correctOptionIndex ? 'border-emerald-500 bg-emerald-50 dark:bg-emerald-900/10' : 'border-zinc-100 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-800/50'}`}
-            >
-              <div className={`w-6 h-6 rounded-full flex items-center justify-center flex-shrink-0 ${index === question.correctOptionIndex ? 'bg-emerald-500 text-white' : 'bg-zinc-200 dark:bg-zinc-700 text-zinc-500'}`}>
-                {index === question.correctOptionIndex ? <CheckCircle2 size={14} /> : <span className="text-xs font-bold">{index + 1}</span>}
+          {question.options.map((option, index) => {
+            const isCorrect = question.correctOptionIndices ? question.correctOptionIndices.includes(index) : question.correctOptionIndex === index;
+            return (
+              <div 
+                key={index} 
+                className={`flex items-center gap-3 p-3 rounded-xl border-2 transition-all ${isCorrect ? 'border-emerald-500 bg-emerald-50 dark:bg-emerald-900/10' : 'border-zinc-100 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-800/50'}`}
+              >
+                <div className={`w-6 h-6 rounded-full flex items-center justify-center flex-shrink-0 ${isCorrect ? 'bg-emerald-500 text-white' : 'bg-zinc-200 dark:bg-zinc-700 text-zinc-500'}`}>
+                  {isCorrect ? <CheckCircle2 size={14} /> : <span className="text-xs font-bold">{index + 1}</span>}
+                </div>
+                <span className={`font-medium text-sm ${isCorrect ? 'text-emerald-700 dark:text-emerald-400' : 'text-zinc-700 dark:text-zinc-300'}`}>
+                  {option}
+                </span>
               </div>
-              <span className={`font-medium text-sm ${index === question.correctOptionIndex ? 'text-emerald-700 dark:text-emerald-400' : 'text-zinc-700 dark:text-zinc-300'}`}>
-                {option}
-              </span>
-            </div>
-          ))}
+            );
+          })}
         </div>
       </motion.div>
       
