@@ -26,6 +26,7 @@ export interface QuizSet {
   title: string;
   questions: QuizQuestion[];
   timeLimit: number; // in seconds
+  allowedRetries?: number; // 0 means unlimited, >0 means specific number of retries
   createdAt: number;
 }
 
