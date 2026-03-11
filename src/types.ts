@@ -30,6 +30,6 @@ export interface QuizSet {
 }
 
 export type Theme = 'light' | 'dark';
-export type ViewMode = 'manage' | 'present';
+export type ViewMode = 'manage' | 'present' | 'dashboard';
 export type Language = 'ar' | 'en';
 export type AppMode = 'home' | 'flashcards' | 'quizzes';
