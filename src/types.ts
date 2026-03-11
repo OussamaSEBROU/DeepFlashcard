@@ -16,7 +16,8 @@ export interface QuizQuestion {
   id: string;
   question: string;
   options: string[];
-  correctOptionIndex: number;
+  correctOptionIndex?: number; // Legacy support
+  correctOptionIndices: number[]; // New support for multiple correct options
   createdAt: number;
 }
 
