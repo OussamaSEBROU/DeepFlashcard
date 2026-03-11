@@ -94,11 +94,11 @@ export default function App() {
               exit={{ opacity: 0, y: -20 }}
               className="flex flex-col items-center justify-center min-h-[60vh] text-center"
             >
-              <h2 className="text-4xl md:text-6xl font-black text-black dark:text-white mb-6 tracking-tighter">
-                {t.chooseFileDesc || 'What do you want to create today?'}
+              <h2 className={`font-black text-black dark:text-white mb-6 tracking-tighter ${lang === 'ar' ? 'text-2xl md:text-5xl' : 'text-4xl md:text-6xl'}`}>
+                {t.homeTitle || 'What do you want to create today?'}
               </h2>
-              <p className="text-lg text-zinc-500 dark:text-zinc-400 mb-12 max-w-xl">
-                {lang === 'ar' ? 'اختر بين إنشاء بطاقات تعليمية للحفظ أو اختبارات لتقييم المعرفة.' : 'Choose between creating flashcards for memorization or quizzes to test knowledge.'}
+              <p className="text-base md:text-lg text-zinc-500 dark:text-zinc-400 mb-12 max-w-xl">
+                {t.homeDesc || (lang === 'ar' ? 'اختر بين إنشاء بطاقات تعليمية للحفظ أو اختبارات لتقييم المعرفة.' : 'Choose between creating flashcards for memorization or quizzes to test knowledge.')}
               </p>
               
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6 w-full max-w-3xl">
