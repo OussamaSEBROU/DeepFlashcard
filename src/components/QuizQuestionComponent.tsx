@@ -8,13 +8,11 @@ interface QuizQuestionProps {
   question: QuizQuestion;
   onDelete: (id: string) => void;
   onEdit: (question: QuizQuestion) => void;
-  onMoveUp: (id: string) => void;
-  onMoveDown: (id: string) => void;
   lang: Language;
   readonly?: boolean;
 }
 
-export const QuizQuestionComponent: React.FC<QuizQuestionProps> = ({ question, onDelete, onEdit, onMoveUp, onMoveDown, lang, readonly }) => {
+export const QuizQuestionComponent: React.FC<QuizQuestionProps> = ({ question, onDelete, onEdit, lang, readonly }) => {
   const t = translations[lang];
 
   return (
@@ -52,28 +50,6 @@ export const QuizQuestionComponent: React.FC<QuizQuestionProps> = ({ question, o
       
       {!readonly && (
         <div className="absolute -top-2 -left-2 md:-top-3 md:-left-3 flex flex-col gap-1 md:gap-2 opacity-0 group-hover:opacity-100 transition-all z-10">
-          <motion.button
-            whileHover={{ scale: 1.1, rotate: 5 }}
-            whileTap={{ scale: 0.9 }}
-            onClick={(e) => {
-              e.stopPropagation();
-              onMoveUp(question.id);
-            }}
-            className="p-2 md:p-3 bg-zinc-800 text-white rounded-xl md:rounded-2xl shadow-xl hover:bg-zinc-700"
-          >
-            <ChevronUp size={14} md:size={18} />
-          </motion.button>
-          <motion.button
-            whileHover={{ scale: 1.1, rotate: 5 }}
-            whileTap={{ scale: 0.9 }}
-            onClick={(e) => {
-              e.stopPropagation();
-              onMoveDown(question.id);
-            }}
-            className="p-2 md:p-3 bg-zinc-800 text-white rounded-xl md:rounded-2xl shadow-xl hover:bg-zinc-700"
-          >
-            <ChevronDown size={14} md:size={18} />
-          </motion.button>
           <motion.button
             whileHover={{ scale: 1.1, rotate: 5 }}
             whileTap={{ scale: 0.9 }}
