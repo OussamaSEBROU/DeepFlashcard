@@ -370,3 +370,4 @@ export const QuizDashboard: React.FC<QuizDashboardProps> = ({ lang }) => {
     </div>
   );
 };
+
