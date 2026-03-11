@@ -9,12 +9,13 @@ import { translations } from '../translations';
 interface PresentationViewProps {
   cards: Flashcard[];
   lang: Language;
+  setTitle?: string;
 }
 
 // Using a more reliable ambient cinematic track
 const RELIABLE_CINEMATIC_URL = 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-8.mp3'; 
 
-export const PresentationView: React.FC<PresentationViewProps> = ({ cards, lang }) => {
+export const PresentationView: React.FC<PresentationViewProps> = ({ cards, lang, setTitle = 'Shared Set' }) => {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isFlipped, setIsFlipped] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
