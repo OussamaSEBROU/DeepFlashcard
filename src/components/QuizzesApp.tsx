@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { motion, AnimatePresence } from 'motion/react';
+import { motion, AnimatePresence, Reorder } from 'motion/react';
 import { Layout, BookOpen, Layers, Trash2, Play, Settings2, FolderPlus, Folder, ChevronRight, Plus, Edit3, X, AlertCircle } from 'lucide-react';
 import LZString from 'lz-string';
 import { QuizQuestion, QuizSet, ViewMode, Language } from '../types';
@@ -92,7 +92,7 @@ export const QuizzesApp: React.FC<QuizzesAppProps> = ({ lang, onBackToHome }) =>
         
         const sharedSet: QuizSet = {
           id: 'shared-quiz',
-          title: t.sharedSet || 'Shared Quiz',
+          title: params.get('title') || t.sharedSet || 'Shared Quiz',
           questions,
           timeLimit: timeLimitParam ? parseInt(timeLimitParam, 10) : 0,
           createdAt: Date.now(),
@@ -209,6 +209,11 @@ export const QuizzesApp: React.FC<QuizzesAppProps> = ({ lang, onBackToHome }) =>
       [newQuestions[index], newQuestions[index + 1]] = [newQuestions[index + 1], newQuestions[index]];
       return { ...s, questions: newQuestions };
     }));
+  };
+
+  const handleReorderQuestions = (newQuestions: QuizQuestion[]) => {
+    if (!activeSetId) return;
+    setSets(sets.map(s => s.id === activeSetId ? { ...s, questions: newQuestions } : s));
   };
 
   const activeSet = sets.find(s => s.id === activeSetId);
@@ -655,30 +660,33 @@ export const QuizzesApp: React.FC<QuizzesAppProps> = ({ lang, onBackToHome }) =>
 
                     {activeSet.id !== 'shared-quiz' && <QuizForm onAdd={addQuestion} lang={lang} />}
 
-                    <div className="grid grid-cols-1 gap-4 md:gap-8">
+                    <Reorder.Group 
+                      axis="y" 
+                      values={activeSet.questions} 
+                      onReorder={handleReorderQuestions}
+                      className="flex flex-col gap-4 md:gap-8"
+                    >
                       <AnimatePresence mode="popLayout">
-                        {activeSet.questions.map((question) => (
-                          <motion.div
+                        {activeSet.questions.map((question, index) => (
+                          <Reorder.Item
                             key={question.id}
-                            layout
-                            initial={{ opacity: 0, y: 30 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            exit={{ opacity: 0, scale: 0.8 }}
-                            className="floating-3d"
+                            value={question}
+                            className="relative floating-3d cursor-grab active:cursor-grabbing"
                           >
+                            <div className={`absolute top-4 ${lang === 'ar' ? 'right-4' : 'left-4'} z-20 bg-black/10 dark:bg-white/10 text-black dark:text-white w-8 h-8 rounded-full flex items-center justify-center font-black`}>
+                              {index + 1}
+                            </div>
                             <QuizQuestionComponent 
                               question={question} 
                               onDelete={confirmDeleteQuestion} 
                               onEdit={(q) => { setQuestionToEdit(q); setIsEditQuestionModalOpen(true); }} 
-                              onMoveUp={moveQuestionUp}
-                              onMoveDown={moveQuestionDown}
                               lang={lang}
                               readonly={activeSet.id === 'shared-quiz'}
                             />
-                          </motion.div>
+                          </Reorder.Item>
                         ))}
                       </AnimatePresence>
-                    </div>
+                    </Reorder.Group>
 
                     {activeSet.questions.length === 0 && (
                       <div className="flex flex-col items-center justify-center py-32 text-zinc-200 dark:text-zinc-800">
@@ -738,6 +746,7 @@ export const QuizzesApp: React.FC<QuizzesAppProps> = ({ lang, onBackToHome }) =>
                   lang={lang} 
                   onFinish={() => setActiveSetId(null)}
                   isCreator={activeSet.id !== 'shared-quiz'}
+                  quizTitle={activeSet.title}
                 />
               </>
             ) : (
