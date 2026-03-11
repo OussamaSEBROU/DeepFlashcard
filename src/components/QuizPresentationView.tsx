@@ -159,6 +159,33 @@ export const QuizPresentationView: React.FC<QuizPresentationViewProps> = ({ ques
     }
   };
 
+  const hasSavedResult = useRef(false);
+
+  useEffect(() => {
+    if (isFinished && userAnswers.length === questions.length && !hasSavedResult.current) {
+      hasSavedResult.current = true;
+      // Save results to localStorage for the dashboard
+      const dateStr = new Date().toISOString();
+      const newResult = {
+        id: crypto.randomUUID(),
+        quizTitle,
+        studentName: userName,
+        score,
+        totalQuestions: questions.length,
+        date: dateStr,
+        details: userAnswers.map(ans => ({
+          question: ans.question,
+          selected: ans.selected.join(' | '),
+          correct: ans.correct.join(' | '),
+          isCorrect: ans.isCorrect
+        }))
+      };
+      
+      const existingResults = JSON.parse(localStorage.getItem('quiz_results') || '[]');
+      localStorage.setItem('quiz_results', JSON.stringify([...existingResults, newResult]));
+    }
+  }, [isFinished, userAnswers, questions.length, quizTitle, userName, score]);
+
   const restartQuiz = () => {
     setCurrentIndex(0);
     setSelectedOptions([]);
@@ -166,6 +193,7 @@ export const QuizPresentationView: React.FC<QuizPresentationViewProps> = ({ ques
     setScore(0);
     setIsFinished(false);
     setUserAnswers([]);
+    hasSavedResult.current = false;
     playSound('TRANSITION');
   };
 
