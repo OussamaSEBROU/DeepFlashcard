@@ -35,7 +35,7 @@ export default function App() {
   });
   const [lang, setLang] = useState<Language>(() => {
     const saved = localStorage.getItem('lang') as Language;
-    return saved || 'ar';
+    return saved || 'en';
   });
   
   const t = translations[lang];
@@ -82,7 +82,15 @@ export default function App() {
     const sharedCards = params.get('cards');
     if (sharedCards) {
       try {
-        const parsed = JSON.parse(LZString.decompressFromEncodedURIComponent(sharedCards));
+        const decompressed = LZString.decompressFromEncodedURIComponent(sharedCards);
+        let parsed;
+        try {
+          parsed = JSON.parse(decompressed);
+        } catch {
+          // If JSON parse fails, try the new ultra-short delimiter format
+          parsed = decompressed.split('\x1E').map(cardStr => cardStr.split('\x1F'));
+        }
+
         const cards: Flashcard[] = parsed.map((item: any) => {
           if (Array.isArray(item)) {
             return {
@@ -503,7 +511,7 @@ export default function App() {
         </div>
       </nav>
 
-      <main className="max-w-6xl mx-auto px-6 py-16">
+      <main className="max-w-6xl mx-auto px-3 md:px-6 py-6 md:py-16">
         <AnimatePresence mode="wait">
           {viewMode === 'manage' ? (
             <motion.div
@@ -514,8 +522,8 @@ export default function App() {
               transition={{ duration: 0.5, type: 'spring' }}
             >
               {/* Folders Sidebar/Grid */}
-              <div className="grid grid-cols-1 lg:grid-cols-[300px_1fr] gap-12">
-                <aside className="space-y-8">
+              <div className="grid grid-cols-1 lg:grid-cols-[300px_1fr] gap-6 md:gap-12">
+                <aside className="space-y-6 md:space-y-8">
                   <div className="flex items-center justify-between">
                     <h3 className="text-xl font-black text-black dark:text-white">{t.myFiles}</h3>
                     <button 
@@ -568,25 +576,25 @@ export default function App() {
                   </div>
                 </aside>
 
-                <div className="space-y-12">
+                <div className="space-y-6 md:space-y-12">
                   {activeSet ? (
                     <>
-                      <header className="flex flex-col md:flex-row md:items-end justify-between gap-6">
+                      <header className="flex flex-col md:flex-row md:items-end justify-between gap-4 md:gap-6">
                         <div>
-                          <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-accent/10 text-accent text-[10px] font-black uppercase tracking-widest mb-4 border border-accent/20">
+                          <div className="inline-flex items-center gap-2 px-3 py-1 md:px-4 md:py-1.5 rounded-full bg-accent/10 text-accent text-[10px] font-black uppercase tracking-widest mb-2 md:mb-4 border border-accent/20">
                             <BookOpen size={12} />
                             <span>{t.activeFile}</span>
                           </div>
-                          <h2 className="text-4xl md:text-5xl font-black text-black dark:text-white tracking-tighter">
+                          <h2 className="text-2xl md:text-5xl font-black text-black dark:text-white tracking-tighter">
                             {activeSet.title}
                           </h2>
                         </div>
                         {activeSet.id !== 'shared-set' && (
                           <button
                             onClick={() => setIsClearModalOpen(true)}
-                            className="flex items-center gap-2 px-6 py-3 text-sm font-black text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-2xl transition-all"
+                            className="flex items-center gap-2 px-4 py-2 md:px-6 md:py-3 text-xs md:text-sm font-black text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-xl md:rounded-2xl transition-all w-fit"
                           >
-                            <Trash2 size={18} />
+                            <Trash2 size={16} className="md:w-[18px] md:h-[18px]" />
                             <span>{t.clearFile}</span>
                           </button>
                         )}
@@ -594,7 +602,7 @@ export default function App() {
 
                       {activeSet.id !== 'shared-set' && <FlashcardForm onAdd={addCard} lang={lang} />}
 
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-8">
                         <AnimatePresence mode="popLayout">
                           {activeSet.cards.map((card) => (
                             <motion.div
