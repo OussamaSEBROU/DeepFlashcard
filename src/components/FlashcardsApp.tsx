@@ -89,7 +89,7 @@ export const FlashcardsApp: React.FC<FlashcardsAppProps> = ({ lang, onBackToHome
         });
         const sharedSet: FlashcardSet = {
           id: 'shared-set',
-          title: t.sharedSet || 'Shared Set',
+          title: params.get('title') || t.sharedSet || 'Shared Set',
           cards,
           createdAt: Date.now(),
         };
@@ -629,7 +629,7 @@ export const FlashcardsApp: React.FC<FlashcardsAppProps> = ({ lang, onBackToHome
                     {activeSet.cards.length} {t.cardsReady}
                   </p>
                 </header>
-                <PresentationView cards={activeSet.cards} lang={lang} />
+                <PresentationView cards={activeSet.cards} lang={lang} setTitle={activeSet.title} />
               </>
             ) : (
               <div className="max-w-4xl mx-auto">
