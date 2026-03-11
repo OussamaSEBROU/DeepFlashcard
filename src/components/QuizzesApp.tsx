@@ -587,7 +587,7 @@ export const QuizzesApp: React.FC<QuizzesAppProps> = ({ lang, onBackToHome }) =>
                           <BookOpen size={12} />
                           <span>{t.activeFile}</span>
                         </div>
-                        <h2 className="text-2xl md:text-5xl font-black text-black dark:text-white tracking-tighter">
+                        <h2 className={`font-black text-black dark:text-white tracking-tighter ${lang === 'ar' ? 'text-2xl md:text-4xl' : 'text-2xl md:text-5xl'}`}>
                           {activeSet.title}
                         </h2>
                         {activeSet.timeLimit > 0 && (
@@ -597,13 +597,22 @@ export const QuizzesApp: React.FC<QuizzesAppProps> = ({ lang, onBackToHome }) =>
                         )}
                       </div>
                       {activeSet.id !== 'shared-quiz' && (
-                        <button
-                          onClick={() => setIsClearModalOpen(true)}
-                          className="flex items-center gap-2 px-4 py-2 md:px-6 md:py-3 text-xs md:text-sm font-black text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-xl md:rounded-2xl transition-all w-fit"
-                        >
-                          <Trash2 size={16} className="md:w-[18px] md:h-[18px]" />
-                          <span>{t.clearFile}</span>
-                        </button>
+                        <div className="flex flex-wrap gap-2 mt-4 md:mt-0">
+                          <button
+                            onClick={() => { setSetToEdit(activeSet); setIsEditSetModalOpen(true); }}
+                            className="flex items-center gap-2 px-4 py-2 md:px-6 md:py-3 text-xs md:text-sm font-black text-primary hover:bg-primary/10 rounded-xl md:rounded-2xl transition-all w-fit"
+                          >
+                            <Edit3 size={16} className="md:w-[18px] md:h-[18px]" />
+                            <span>{t.editFile}</span>
+                          </button>
+                          <button
+                            onClick={() => setIsClearModalOpen(true)}
+                            className="flex items-center gap-2 px-4 py-2 md:px-6 md:py-3 text-xs md:text-sm font-black text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-xl md:rounded-2xl transition-all w-fit"
+                          >
+                            <Trash2 size={16} className="md:w-[18px] md:h-[18px]" />
+                            <span>{t.clearFile}</span>
+                          </button>
+                        </div>
                       )}
                     </header>
 
@@ -679,7 +688,7 @@ export const QuizzesApp: React.FC<QuizzesAppProps> = ({ lang, onBackToHome }) =>
                     <ChevronRight size={16} className={lang === 'en' ? 'rotate-180' : ''} />
                     <span>{t.backToFiles}</span>
                   </button>
-                  <h2 className="text-5xl md:text-6xl font-black text-black dark:text-white mb-6 tracking-tighter">
+                  <h2 className={`font-black text-black dark:text-white mb-6 tracking-tighter ${lang === 'ar' ? 'text-3xl md:text-5xl' : 'text-5xl md:text-6xl'}`}>
                     {t.presentingFile}: <span className="text-primary">{activeSet.title}</span>
                   </h2>
                   <p className="text-lg text-zinc-500 dark:text-zinc-400 font-medium">
@@ -691,6 +700,7 @@ export const QuizzesApp: React.FC<QuizzesAppProps> = ({ lang, onBackToHome }) =>
                   timeLimit={activeSet.timeLimit} 
                   lang={lang} 
                   onFinish={() => setActiveSetId(null)}
+                  isCreator={activeSet.id !== 'shared-quiz'}
                 />
               </>
             ) : (
@@ -700,7 +710,7 @@ export const QuizzesApp: React.FC<QuizzesAppProps> = ({ lang, onBackToHome }) =>
                     <Play size={16} fill="currentColor" />
                     <span>{t.libraryDesc}</span>
                   </div>
-                  <h2 className="text-5xl md:text-6xl font-black text-black dark:text-white mb-6 tracking-tighter">
+                  <h2 className={`font-black text-black dark:text-white mb-6 tracking-tighter ${lang === 'ar' ? 'text-3xl md:text-5xl' : 'text-5xl md:text-6xl'}`}>
                     {t.library} <span className="text-primary">{t.present}</span>
                   </h2>
                 </header>
