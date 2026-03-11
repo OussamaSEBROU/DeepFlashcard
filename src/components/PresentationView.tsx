@@ -217,7 +217,7 @@ export const PresentationView: React.FC<PresentationViewProps> = ({ cards, lang 
             onClick={() => {
               const minimalString = cards.map(c => `${c.question}\x1F${c.answer}`).join('\x1E');
               const shareableData = LZString.compressToEncodedURIComponent(minimalString);
-              const url = `${window.location.origin}${window.location.pathname}?cards=${shareableData}`;
+              const url = `${window.location.origin}${window.location.pathname}?cards=${shareableData}&title=${encodeURIComponent(setTitle)}`;
               navigator.clipboard.writeText(url);
               setIsCopied(true);
               setTimeout(() => setIsCopied(false), 2000);
