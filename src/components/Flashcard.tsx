@@ -9,13 +9,11 @@ interface FlashcardProps {
   card: Flashcard;
   onDelete: (id: string) => void;
   onEdit: (card: Flashcard) => void;
-  onMoveUp: (id: string) => void;
-  onMoveDown: (id: string) => void;
   lang: Language;
   readonly?: boolean;
 }
 
-export const FlashcardComponent: React.FC<FlashcardProps> = ({ card, onDelete, onEdit, onMoveUp, onMoveDown, lang, readonly }) => {
+export const FlashcardComponent: React.FC<FlashcardProps> = ({ card, onDelete, onEdit, lang, readonly }) => {
   const [isFlipped, setIsFlipped] = useState(false);
   const { playSound } = useSound();
   const t = translations[lang];
@@ -62,28 +60,6 @@ export const FlashcardComponent: React.FC<FlashcardProps> = ({ card, onDelete, o
       
       {!readonly && (
         <div className="absolute -top-2 -left-2 md:-top-3 md:-left-3 flex flex-col gap-1 md:gap-2 opacity-0 group-hover:opacity-100 transition-all z-10">
-          <motion.button
-            whileHover={{ scale: 1.1, rotate: 5 }}
-            whileTap={{ scale: 0.9 }}
-            onClick={(e) => {
-              e.stopPropagation();
-              onMoveUp(card.id);
-            }}
-            className="p-2 md:p-3 bg-zinc-800 text-white rounded-xl md:rounded-2xl shadow-xl hover:bg-zinc-700"
-          >
-            <ChevronUp size={14} md:size={18} />
-          </motion.button>
-          <motion.button
-            whileHover={{ scale: 1.1, rotate: 5 }}
-            whileTap={{ scale: 0.9 }}
-            onClick={(e) => {
-              e.stopPropagation();
-              onMoveDown(card.id);
-            }}
-            className="p-2 md:p-3 bg-zinc-800 text-white rounded-xl md:rounded-2xl shadow-xl hover:bg-zinc-700"
-          >
-            <ChevronDown size={14} md:size={18} />
-          </motion.button>
           <motion.button
             whileHover={{ scale: 1.1, rotate: 5 }}
             whileTap={{ scale: 0.9 }}
