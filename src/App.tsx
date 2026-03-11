@@ -56,7 +56,7 @@ export default function App() {
   const [cardToDeleteId, setCardToDeleteId] = useState<string | null>(null);
 
   useEffect(() => {
-    localStorage.setItem('flashcard_sets', JSON.stringify(sets));
+    localStorage.setItem('flashcard_sets', JSON.stringify(sets.filter(s => s.id !== 'shared-set')));
   }, [sets]);
 
   useEffect(() => {
@@ -82,10 +82,21 @@ export default function App() {
     const sharedCards = params.get('cards');
     if (sharedCards) {
       try {
-        const cards = JSON.parse(LZString.decompressFromEncodedURIComponent(sharedCards));
+        const parsed = JSON.parse(LZString.decompressFromEncodedURIComponent(sharedCards));
+        const cards: Flashcard[] = parsed.map((item: any) => {
+          if (Array.isArray(item)) {
+            return {
+              id: crypto.randomUUID(),
+              question: item[0],
+              answer: item[1],
+              createdAt: Date.now()
+            };
+          }
+          return item;
+        });
         const sharedSet: FlashcardSet = {
           id: 'shared-set',
-          title: 'Shared Set',
+          title: t.sharedSet || 'Shared Set',
           cards,
           createdAt: Date.now(),
         };
@@ -530,18 +541,22 @@ export default function App() {
                           <ChevronRight size={16} className={`${activeSetId === set.id ? 'text-white' : 'text-accent'} ${lang === 'en' ? 'rotate-180' : ''}`} />
                         </button>
                         <div className="absolute left-2 top-1/2 -translate-y-1/2 flex gap-1 opacity-0 group-hover:opacity-100 transition-all">
-                          <button 
-                            onClick={(e) => { e.stopPropagation(); setSetToEdit(set); setIsEditSetModalOpen(true); }}
-                            className="p-2 text-primary hover:bg-primary/10 rounded-xl"
-                          >
-                            <Edit3 size={16} />
-                          </button>
-                          <button 
-                            onClick={(e) => { e.stopPropagation(); confirmDeleteSet(set.id); }}
-                            className="p-2 text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-xl"
-                          >
-                            <Trash2 size={16} />
-                          </button>
+                          {set.id !== 'shared-set' && (
+                            <>
+                              <button 
+                                onClick={(e) => { e.stopPropagation(); setSetToEdit(set); setIsEditSetModalOpen(true); }}
+                                className="p-2 text-primary hover:bg-primary/10 rounded-xl"
+                              >
+                                <Edit3 size={16} />
+                              </button>
+                              <button 
+                                onClick={(e) => { e.stopPropagation(); confirmDeleteSet(set.id); }}
+                                className="p-2 text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-xl"
+                              >
+                                <Trash2 size={16} />
+                              </button>
+                            </>
+                          )}
                         </div>
                       </div>
                     ))}
@@ -566,16 +581,18 @@ export default function App() {
                             {activeSet.title}
                           </h2>
                         </div>
-                        <button
-                          onClick={() => setIsClearModalOpen(true)}
-                          className="flex items-center gap-2 px-6 py-3 text-sm font-black text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-2xl transition-all"
-                        >
-                          <Trash2 size={18} />
-                          <span>{t.clearFile}</span>
-                        </button>
+                        {activeSet.id !== 'shared-set' && (
+                          <button
+                            onClick={() => setIsClearModalOpen(true)}
+                            className="flex items-center gap-2 px-6 py-3 text-sm font-black text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-2xl transition-all"
+                          >
+                            <Trash2 size={18} />
+                            <span>{t.clearFile}</span>
+                          </button>
+                        )}
                       </header>
 
-                      <FlashcardForm onAdd={addCard} lang={lang} />
+                      {activeSet.id !== 'shared-set' && <FlashcardForm onAdd={addCard} lang={lang} />}
 
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                         <AnimatePresence mode="popLayout">
@@ -595,6 +612,7 @@ export default function App() {
                                 onMoveUp={moveCardUp}
                                 onMoveDown={moveCardDown}
                                 lang={lang}
+                                readonly={activeSet.id === 'shared-set'}
                               />
                             </motion.div>
                           ))}
