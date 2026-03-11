@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import LZString from 'lz-string';
-import { Maximize2, Minimize2, Timer, Share2, Check, X, RotateCcw, Trophy, ChevronRight } from 'lucide-react';
+import { Maximize2, Minimize2, Timer, Share2, Check, X, RotateCcw, Trophy, ChevronRight, Music, CheckCircle2 } from 'lucide-react';
 import { QuizQuestion, Language } from '../types';
 import { useSound } from '../hooks/useSound';
 import { translations } from '../translations';
@@ -11,9 +11,10 @@ interface QuizPresentationViewProps {
   timeLimit: number;
   lang: Language;
   onFinish?: () => void;
+  isCreator?: boolean;
 }
 
-export const QuizPresentationView: React.FC<QuizPresentationViewProps> = ({ questions, timeLimit, lang, onFinish }) => {
+export const QuizPresentationView: React.FC<QuizPresentationViewProps> = ({ questions, timeLimit, lang, onFinish, isCreator }) => {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [selectedOption, setSelectedOption] = useState<number | null>(null);
   const [isAnswered, setIsAnswered] = useState(false);
@@ -22,10 +23,32 @@ export const QuizPresentationView: React.FC<QuizPresentationViewProps> = ({ ques
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [timeLeft, setTimeLeft] = useState(timeLimit);
   const [isCopied, setIsCopied] = useState(false);
+  const [isMusicPlaying, setIsMusicPlaying] = useState(false);
   
   const timerRef = useRef<NodeJS.Timeout | null>(null);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
   const { playSound } = useSound();
   const t = translations[lang];
+
+  useEffect(() => {
+    if (isMusicPlaying) {
+      if (!audioRef.current) {
+        audioRef.current = new Audio('https://www.soundjay.com/free-music/sounds/deep-blue-01.mp3');
+        audioRef.current.loop = true;
+        audioRef.current.volume = 0.15;
+      }
+      audioRef.current.play().catch(e => console.log(e));
+    } else {
+      if (audioRef.current) {
+        audioRef.current.pause();
+      }
+    }
+    return () => {
+      if (audioRef.current) {
+        audioRef.current.pause();
+      }
+    };
+  }, [isMusicPlaying]);
 
   useEffect(() => {
     if (!isFinished && !isAnswered && timeLimit > 0) {
@@ -62,7 +85,7 @@ export const QuizPresentationView: React.FC<QuizPresentationViewProps> = ({ ques
     if (timerRef.current) clearInterval(timerRef.current);
     setIsAnswered(true);
     setSelectedOption(-1); // Indicates time up
-    playSound('ERROR');
+    playSound('INCORRECT');
   };
 
   const handleOptionSelect = (index: number) => {
@@ -74,9 +97,9 @@ export const QuizPresentationView: React.FC<QuizPresentationViewProps> = ({ ques
     
     if (index === currentQuestion.correctOptionIndex) {
       setScore(prev => prev + 1);
-      playSound('SUCCESS');
+      playSound('CORRECT');
     } else {
-      playSound('ERROR');
+      playSound('INCORRECT');
     }
   };
 
@@ -85,10 +108,10 @@ export const QuizPresentationView: React.FC<QuizPresentationViewProps> = ({ ques
       setCurrentIndex(prev => prev + 1);
       setSelectedOption(null);
       setIsAnswered(false);
-      playSound('SWIPE');
+      playSound('TRANSITION');
     } else {
       setIsFinished(true);
-      playSound('REVEAL');
+      playSound('SCORE');
     }
   };
 
@@ -124,7 +147,7 @@ export const QuizPresentationView: React.FC<QuizPresentationViewProps> = ({ ques
           <div className="w-24 h-24 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-6">
             <Trophy size={48} className="text-primary" />
           </div>
-          <h2 className="text-3xl md:text-4xl font-black text-black dark:text-white mb-2">{t.quizResults}</h2>
+          <h2 className={`font-black text-black dark:text-white mb-2 ${lang === 'ar' ? 'text-2xl md:text-4xl' : 'text-3xl md:text-4xl'}`}>{t.quizResults}</h2>
           <p className="text-zinc-500 dark:text-zinc-400 font-medium mb-8">{t.score}</p>
           
           <div className="text-6xl md:text-7xl font-black text-primary mb-4 tracking-tighter">
@@ -190,6 +213,19 @@ export const QuizPresentationView: React.FC<QuizPresentationViewProps> = ({ ques
           </div>
         )}
 
+        {/* Music Toggle */}
+        <div className="flex items-center bg-white/80 dark:bg-zinc-900/80 backdrop-blur-xl px-2 py-2 md:py-3 rounded-[2rem] border border-accent/20 shadow-3d dark:shadow-3d-dark">
+          <motion.button 
+            whileHover={{ scale: 1.1 }}
+            whileTap={{ scale: 0.9 }}
+            onClick={() => setIsMusicPlaying(!isMusicPlaying)}
+            className={`p-2 rounded-full transition-all ${isMusicPlaying ? 'bg-primary text-white' : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200'}`}
+            title="Toggle Background Music"
+          >
+            <Music size={16} className={!isMusicPlaying ? 'opacity-50' : ''} />
+          </motion.button>
+        </div>
+
         {/* Share Button */}
         <div className="flex items-center bg-white/80 dark:bg-zinc-900/80 backdrop-blur-xl px-2 py-2 md:py-3 rounded-[2rem] border border-accent/20 shadow-3d dark:shadow-3d-dark">
           <motion.button 
@@ -225,7 +261,7 @@ export const QuizPresentationView: React.FC<QuizPresentationViewProps> = ({ ques
             <div className="absolute top-0 left-0 w-full h-2 md:h-3 bg-primary" />
             <span className="absolute top-4 md:top-8 right-6 md:right-10 text-[8px] md:text-[10px] font-black uppercase tracking-[0.2em] md:tracking-[0.3em] text-accent/50">{t.question}</span>
             
-            <h3 className="text-xl md:text-3xl font-black text-zinc-900 dark:text-zinc-100 leading-snug mt-4 mb-8 text-center">
+            <h3 className={`font-black text-zinc-900 dark:text-zinc-100 leading-snug mt-4 mb-8 text-center ${lang === 'ar' ? 'text-lg md:text-3xl' : 'text-xl md:text-3xl'}`}>
               {currentQuestion.question}
             </h3>
             
@@ -266,7 +302,12 @@ export const QuizPresentationView: React.FC<QuizPresentationViewProps> = ({ ques
                        optionState === 'incorrect' ? <X size={16} /> : 
                        String.fromCharCode(65 + index)}
                     </div>
-                    <span className="font-medium text-sm md:text-base flex-1">{option}</span>
+                    <span className="font-medium text-sm md:text-base flex-1 flex items-center justify-between">
+                      <span>{option}</span>
+                      {isCreator && index === currentQuestion.correctOptionIndex && !isAnswered && (
+                        <CheckCircle2 size={16} className="text-emerald-500/50" />
+                      )}
+                    </span>
                   </motion.button>
                 );
               })}
