@@ -9,13 +9,14 @@ import { translations } from '../translations';
 interface QuizPresentationViewProps {
   questions: QuizQuestion[];
   timeLimit: number;
+  allowedRetries?: number;
   lang: Language;
   onFinish?: () => void;
   isCreator?: boolean;
   quizTitle?: string;
 }
 
-export const QuizPresentationView: React.FC<QuizPresentationViewProps> = ({ questions, timeLimit, lang, onFinish, isCreator, quizTitle = 'Quiz' }) => {
+export const QuizPresentationView: React.FC<QuizPresentationViewProps> = ({ questions, timeLimit, allowedRetries = 0, lang, onFinish, isCreator, quizTitle = 'Quiz' }) => {
   const [hasStarted, setHasStarted] = useState(isCreator);
   const [userName, setUserName] = useState('');
   const [currentIndex, setCurrentIndex] = useState(0);
@@ -28,6 +29,22 @@ export const QuizPresentationView: React.FC<QuizPresentationViewProps> = ({ ques
   const [isCopied, setIsCopied] = useState(false);
   const [isMusicPlaying, setIsMusicPlaying] = useState(false);
   const [userAnswers, setUserAnswers] = useState<{question: string, selected: string[], correct: string[], isCorrect: boolean}[]>([]);
+  const [attempts, setAttempts] = useState(0);
+  const [maxRetriesReached, setMaxRetriesReached] = useState(false);
+
+  const quizHash = useMemo(() => {
+    return btoa(encodeURIComponent(quizTitle + questions.length + (questions[0]?.question || '')));
+  }, [quizTitle, questions]);
+
+  useEffect(() => {
+    if (!isCreator) {
+      const savedAttempts = parseInt(localStorage.getItem(`quiz_attempts_${quizHash}`) || '0', 10);
+      setAttempts(savedAttempts);
+      if (allowedRetries > 0 && savedAttempts >= allowedRetries) {
+        setMaxRetriesReached(true);
+      }
+    }
+  }, [quizHash, isCreator, allowedRetries]);
   
   const timerRef = useRef<NodeJS.Timeout | null>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
@@ -156,15 +173,25 @@ export const QuizPresentationView: React.FC<QuizPresentationViewProps> = ({ ques
     const headers = ['QuizTitle', 'StudentName', 'Score', 'TotalQuestions', 'Date', 'Question', 'Selected', 'Correct', 'IsCorrect'];
     const dateStr = new Date().toISOString();
     
+    const escapeCSV = (str: string | number | boolean) => {
+      if (str === null || str === undefined) return '""';
+      const stringValue = String(str);
+      // If the string contains quotes, commas, or newlines, escape it
+      if (stringValue.includes('"') || stringValue.includes(',') || stringValue.includes('\n')) {
+        return `"${stringValue.replace(/"/g, '""')}"`;
+      }
+      return stringValue;
+    };
+
     const rows = userAnswers.map(ans => [
-      `"${quizTitle.replace(/"/g, '""')}"`,
-      `"${userName.replace(/"/g, '""')}"`,
+      escapeCSV(quizTitle),
+      escapeCSV(userName),
       score,
       questions.length,
-      `"${dateStr}"`,
-      `"${ans.question.replace(/"/g, '""')}"`,
-      `"${ans.selected.join(' | ').replace(/"/g, '""')}"`,
-      `"${ans.correct.join(' | ').replace(/"/g, '""')}"`,
+      escapeCSV(dateStr),
+      escapeCSV(ans.question),
+      escapeCSV(ans.selected.join(' | ')),
+      escapeCSV(ans.correct.join(' | ')),
       ans.isCorrect
     ]);
     
@@ -173,7 +200,9 @@ export const QuizPresentationView: React.FC<QuizPresentationViewProps> = ({ ques
       ...rows.map(e => e.join(','))
     ].join('\n');
     
-    const blob = new Blob(['\uFEFF' + csvContent], { type: 'text/csv;charset=utf-8;' });
+    // Use Uint8Array with BOM for proper UTF-8 encoding in Excel
+    const bom = new Uint8Array([0xEF, 0xBB, 0xBF]);
+    const blob = new Blob([bom, csvContent], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.setAttribute('href', url);
@@ -359,7 +388,7 @@ export const QuizPresentationView: React.FC<QuizPresentationViewProps> = ({ ques
                 return `${q.question}\x1F${q.options.join('\x1F')}\x1F${correctIndices}`;
               }).join('\x1E');
               const shareableData = LZString.compressToEncodedURIComponent(minimalString);
-              const url = `${window.location.origin}${window.location.pathname}?quiz=${shareableData}&time=${timeLimit}&title=${encodeURIComponent(quizTitle)}`;
+              const url = `${window.location.origin}${window.location.pathname}?quiz=${shareableData}&time=${timeLimit}&retries=${allowedRetries}&title=${encodeURIComponent(quizTitle)}`;
               navigator.clipboard.writeText(url);
               setIsCopied(true);
               setTimeout(() => setIsCopied(false), 2000);
