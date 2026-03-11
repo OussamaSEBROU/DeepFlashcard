@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import LZString from 'lz-string';
-import { Maximize2, Minimize2, Timer, Share2, Check, X, RotateCcw, Trophy, ChevronRight, Music, CheckCircle2 } from 'lucide-react';
+import { Maximize2, Minimize2, Timer, Share2, Check, X, RotateCcw, Trophy, ChevronRight, Music, CheckCircle2, Download, Play } from 'lucide-react';
 import { QuizQuestion, Language } from '../types';
 import { useSound } from '../hooks/useSound';
 import { translations } from '../translations';
@@ -15,8 +15,10 @@ interface QuizPresentationViewProps {
 }
 
 export const QuizPresentationView: React.FC<QuizPresentationViewProps> = ({ questions, timeLimit, lang, onFinish, isCreator }) => {
+  const [hasStarted, setHasStarted] = useState(isCreator);
+  const [userName, setUserName] = useState('');
   const [currentIndex, setCurrentIndex] = useState(0);
-  const [selectedOption, setSelectedOption] = useState<number | null>(null);
+  const [selectedOptions, setSelectedOptions] = useState<number[]>([]);
   const [isAnswered, setIsAnswered] = useState(false);
   const [score, setScore] = useState(0);
   const [isFinished, setIsFinished] = useState(false);
@@ -24,6 +26,7 @@ export const QuizPresentationView: React.FC<QuizPresentationViewProps> = ({ ques
   const [timeLeft, setTimeLeft] = useState(timeLimit);
   const [isCopied, setIsCopied] = useState(false);
   const [isMusicPlaying, setIsMusicPlaying] = useState(false);
+  const [userAnswers, setUserAnswers] = useState<{question: string, selected: string[], correct: string[], isCorrect: boolean}[]>([]);
   
   const timerRef = useRef<NodeJS.Timeout | null>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
@@ -33,7 +36,7 @@ export const QuizPresentationView: React.FC<QuizPresentationViewProps> = ({ ques
   useEffect(() => {
     if (isMusicPlaying) {
       if (!audioRef.current) {
-        audioRef.current = new Audio('https://www.soundjay.com/free-music/sounds/deep-blue-01.mp3');
+        audioRef.current = new Audio('https://assets.mixkit.co/active_storage/sfx/2018/2018-preview.mp3'); // Replace with a cinematic track
         audioRef.current.loop = true;
         audioRef.current.volume = 0.15;
       }
@@ -51,7 +54,7 @@ export const QuizPresentationView: React.FC<QuizPresentationViewProps> = ({ ques
   }, [isMusicPlaying]);
 
   useEffect(() => {
-    if (!isFinished && !isAnswered && timeLimit > 0) {
+    if (hasStarted && !isFinished && !isAnswered && timeLimit > 0) {
       setTimeLeft(timeLimit);
       if (timerRef.current) clearInterval(timerRef.current);
       
@@ -69,7 +72,7 @@ export const QuizPresentationView: React.FC<QuizPresentationViewProps> = ({ ques
     return () => {
       if (timerRef.current) clearInterval(timerRef.current);
     };
-  }, [currentIndex, isFinished, isAnswered, timeLimit]);
+  }, [hasStarted, currentIndex, isFinished, isAnswered, timeLimit]);
 
   if (questions.length === 0) {
     return (
@@ -84,29 +87,52 @@ export const QuizPresentationView: React.FC<QuizPresentationViewProps> = ({ ques
   const handleTimeUp = () => {
     if (timerRef.current) clearInterval(timerRef.current);
     setIsAnswered(true);
-    setSelectedOption(-1); // Indicates time up
     playSound('INCORRECT');
+    recordAnswer([]);
   };
 
-  const handleOptionSelect = (index: number) => {
+  const toggleOption = (index: number) => {
     if (isAnswered) return;
+    setSelectedOptions(prev => {
+      if (prev.includes(index)) return prev.filter(i => i !== index);
+      return [...prev, index];
+    });
+  };
+
+  const submitAnswer = () => {
+    if (isAnswered || selectedOptions.length === 0) return;
     
     if (timerRef.current) clearInterval(timerRef.current);
-    setSelectedOption(index);
     setIsAnswered(true);
     
-    if (index === currentQuestion.correctOptionIndex) {
+    const correctIndices = currentQuestion.correctOptionIndices || [currentQuestion.correctOptionIndex!];
+    const isCorrect = selectedOptions.length === correctIndices.length && 
+                      selectedOptions.every(val => correctIndices.includes(val));
+    
+    if (isCorrect) {
       setScore(prev => prev + 1);
       playSound('CORRECT');
     } else {
       playSound('INCORRECT');
     }
+    
+    recordAnswer(selectedOptions, isCorrect);
+  };
+
+  const recordAnswer = (selected: number[], isCorrect: boolean = false) => {
+    const correctIndices = currentQuestion.correctOptionIndices || [currentQuestion.correctOptionIndex!];
+    setUserAnswers(prev => [...prev, {
+      question: currentQuestion.question,
+      selected: selected.map(i => currentQuestion.options[i]),
+      correct: correctIndices.map(i => currentQuestion.options[i]),
+      isCorrect
+    }]);
   };
 
   const nextQuestion = () => {
     if (currentIndex < questions.length - 1) {
       setCurrentIndex(prev => prev + 1);
-      setSelectedOption(null);
+      setSelectedOptions([]);
       setIsAnswered(false);
       playSound('TRANSITION');
     } else {
@@ -117,12 +143,83 @@ export const QuizPresentationView: React.FC<QuizPresentationViewProps> = ({ ques
 
   const restartQuiz = () => {
     setCurrentIndex(0);
-    setSelectedOption(null);
+    setSelectedOptions([]);
     setIsAnswered(false);
     setScore(0);
     setIsFinished(false);
-    playSound('SWIPE');
+    setUserAnswers([]);
+    playSound('TRANSITION');
   };
+
+  const downloadCSV = () => {
+    const headers = ['Question', 'Selected Answer(s)', 'Correct Answer(s)', 'Result'];
+    const rows = userAnswers.map(ans => [
+      `"${ans.question.replace(/"/g, '""')}"`,
+      `"${ans.selected.join(', ').replace(/"/g, '""')}"`,
+      `"${ans.correct.join(', ').replace(/"/g, '""')}"`,
+      ans.isCorrect ? 'Correct' : 'Incorrect'
+    ]);
+    
+    const csvContent = [
+      `Name: ${userName || 'Anonymous'}`,
+      `Score: ${score}/${questions.length}`,
+      `Date: ${new Date().toLocaleString()}`,
+      '',
+      headers.join(','),
+      ...rows.map(e => e.join(','))
+    ].join('\n');
+    
+    const blob = new Blob(['\uFEFF' + csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.setAttribute('href', url);
+    link.setAttribute('download', `${userName || 'quiz'}_results.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
+  if (!hasStarted) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[50vh] gap-8">
+        <motion.div 
+          initial={{ opacity: 0, scale: 0.9, y: 20 }}
+          animate={{ opacity: 1, scale: 1, y: 0 }}
+          className="bg-white dark:bg-zinc-900 p-8 md:p-12 rounded-[3rem] shadow-3d dark:shadow-3d-dark border-2 border-accent/10 text-center max-w-lg w-full relative overflow-hidden"
+        >
+          <div className="absolute top-0 left-0 w-full h-2 bg-primary" />
+          <h2 className={`font-black text-black dark:text-white mb-6 ${lang === 'ar' ? 'text-2xl md:text-4xl' : 'text-3xl md:text-4xl'}`}>
+            {lang === 'ar' ? 'مرحباً بك في الاختبار' : 'Welcome to the Quiz'}
+          </h2>
+          <p className="text-zinc-500 dark:text-zinc-400 font-medium mb-8">
+            {lang === 'ar' ? 'يرجى إدخال اسمك ولقبك للبدء' : 'Please enter your full name to start'}
+          </p>
+          
+          <input
+            type="text"
+            value={userName}
+            onChange={(e) => setUserName(e.target.value)}
+            placeholder={lang === 'ar' ? 'الاسم واللقب' : 'Full Name'}
+            className="w-full px-6 py-4 rounded-2xl bg-zinc-50 dark:bg-zinc-800 border-2 border-zinc-100 dark:border-zinc-800 text-black dark:text-white focus:border-accent outline-none transition-all mb-8 font-bold text-center"
+          />
+          
+          <button 
+            onClick={() => {
+              if (userName.trim()) {
+                setHasStarted(true);
+                playSound('TRANSITION');
+              }
+            }}
+            disabled={!userName.trim()}
+            className="w-full py-4 rounded-2xl bg-primary text-white font-black text-lg hover:bg-primary-dark transition-all shadow-lg shadow-primary/30 flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            <Play size={20} className={lang === 'ar' ? 'rotate-180' : ''} />
+            <span>{lang === 'ar' ? 'انطلاق' : 'Start'}</span>
+          </button>
+        </motion.div>
+      </div>
+    );
+  }
 
   const toggleFullscreen = () => {
     if (!document.fullscreenElement) {
@@ -159,13 +256,20 @@ export const QuizPresentationView: React.FC<QuizPresentationViewProps> = ({ ques
           
           <div className="flex flex-col gap-4">
             <button 
+              onClick={downloadCSV}
+              className="w-full py-4 rounded-2xl bg-zinc-800 text-white font-black text-lg hover:bg-zinc-700 transition-all shadow-lg flex items-center justify-center gap-2"
+            >
+              <Download size={20} />
+              <span>{lang === 'ar' ? 'تحميل النتائج (CSV)' : 'Download Results (CSV)'}</span>
+            </button>
+            <button 
               onClick={restartQuiz}
               className="w-full py-4 rounded-2xl bg-primary text-white font-black text-lg hover:bg-primary-dark transition-all shadow-lg shadow-primary/30 flex items-center justify-center gap-2"
             >
               <RotateCcw size={20} />
               <span>{t.playAgain}</span>
             </button>
-            {onFinish && (
+            {onFinish && isCreator && (
               <button 
                 onClick={onFinish}
                 className="w-full py-4 rounded-2xl bg-zinc-100 dark:bg-zinc-800 text-accent font-black text-lg hover:bg-zinc-200 dark:hover:bg-zinc-700 transition-all flex items-center justify-center gap-2"
@@ -267,15 +371,19 @@ export const QuizPresentationView: React.FC<QuizPresentationViewProps> = ({ ques
             
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {currentQuestion.options.map((option, index) => {
+                const correctIndices = currentQuestion.correctOptionIndices || [currentQuestion.correctOptionIndex!];
                 let optionState = 'default';
+                
                 if (isAnswered) {
-                  if (index === currentQuestion.correctOptionIndex) {
+                  if (correctIndices.includes(index)) {
                     optionState = 'correct';
-                  } else if (index === selectedOption) {
+                  } else if (selectedOptions.includes(index)) {
                     optionState = 'incorrect';
                   } else {
                     optionState = 'disabled';
                   }
+                } else if (selectedOptions.includes(index)) {
+                  optionState = 'selected';
                 }
 
                 return (
@@ -283,10 +391,11 @@ export const QuizPresentationView: React.FC<QuizPresentationViewProps> = ({ ques
                     key={index}
                     whileHover={!isAnswered ? { scale: 1.02 } : {}}
                     whileTap={!isAnswered ? { scale: 0.98 } : {}}
-                    onClick={() => handleOptionSelect(index)}
+                    onClick={() => toggleOption(index)}
                     disabled={isAnswered}
                     className={`relative p-4 md:p-6 rounded-2xl border-2 text-left transition-all flex items-center gap-4 ${
                       optionState === 'default' ? 'border-zinc-100 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-800/50 hover:border-accent/50 text-zinc-800 dark:text-zinc-200' :
+                      optionState === 'selected' ? 'border-accent bg-accent/5 text-accent shadow-md' :
                       optionState === 'correct' ? 'border-emerald-500 bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-400 shadow-lg shadow-emerald-500/20' :
                       optionState === 'incorrect' ? 'border-red-500 bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-400' :
                       'border-zinc-100 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-800/20 text-zinc-400 dark:text-zinc-600 opacity-50'
@@ -294,17 +403,19 @@ export const QuizPresentationView: React.FC<QuizPresentationViewProps> = ({ ques
                   >
                     <div className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 font-bold ${
                       optionState === 'default' ? 'bg-zinc-200 dark:bg-zinc-700 text-zinc-600 dark:text-zinc-300' :
+                      optionState === 'selected' ? 'bg-accent text-white' :
                       optionState === 'correct' ? 'bg-emerald-500 text-white' :
                       optionState === 'incorrect' ? 'bg-red-500 text-white' :
                       'bg-zinc-200 dark:bg-zinc-700 text-zinc-400 dark:text-zinc-600'
                     }`}>
                       {optionState === 'correct' ? <Check size={16} /> : 
                        optionState === 'incorrect' ? <X size={16} /> : 
+                       optionState === 'selected' ? <Check size={16} /> :
                        String.fromCharCode(65 + index)}
                     </div>
                     <span className="font-medium text-sm md:text-base flex-1 flex items-center justify-between">
                       <span>{option}</span>
-                      {isCreator && index === currentQuestion.correctOptionIndex && !isAnswered && (
+                      {isCreator && correctIndices.includes(index) && !isAnswered && (
                         <CheckCircle2 size={16} className="text-emerald-500/50" />
                       )}
                     </span>
@@ -314,14 +425,38 @@ export const QuizPresentationView: React.FC<QuizPresentationViewProps> = ({ ques
             </div>
 
             <AnimatePresence>
+              {!isAnswered && selectedOptions.length > 0 && (
+                <motion.div
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: 20 }}
+                  className="mt-8 flex justify-center"
+                >
+                  <button
+                    onClick={submitAnswer}
+                    className="px-8 py-4 rounded-full bg-primary text-white font-black hover:bg-primary-dark transition-all shadow-lg shadow-primary/30 flex items-center gap-2"
+                  >
+                    <span>{lang === 'ar' ? 'تأكيد الإجابة' : 'Submit Answer'}</span>
+                    <Check size={20} />
+                  </button>
+                </motion.div>
+              )}
               {isAnswered && (
                 <motion.div
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
                   className="mt-8 flex flex-col items-center"
                 >
-                  <div className={`text-lg font-black mb-6 ${selectedOption === currentQuestion.correctOptionIndex ? 'text-emerald-500' : 'text-red-500'}`}>
-                    {selectedOption === currentQuestion.correctOptionIndex ? t.correct : selectedOption === -1 ? t.timeUp : t.incorrect}
+                  <div className={`text-lg font-black mb-6 ${
+                    selectedOptions.length === 0 ? 'text-red-500' :
+                    (selectedOptions.length === (currentQuestion.correctOptionIndices?.length || 1) && 
+                     selectedOptions.every(val => (currentQuestion.correctOptionIndices || [currentQuestion.correctOptionIndex!]).includes(val))) 
+                     ? 'text-emerald-500' : 'text-red-500'
+                  }`}>
+                    {selectedOptions.length === 0 ? t.timeUp : 
+                     (selectedOptions.length === (currentQuestion.correctOptionIndices?.length || 1) && 
+                      selectedOptions.every(val => (currentQuestion.correctOptionIndices || [currentQuestion.correctOptionIndex!]).includes(val))) 
+                      ? t.correct : t.incorrect}
                   </div>
                   <button
                     onClick={nextQuestion}
