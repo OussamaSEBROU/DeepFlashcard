@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Upload, Users, Target, Award, ChevronDown, ChevronUp } from 'lucide-react';
 import { PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
@@ -25,10 +25,18 @@ interface ParsedResult {
 }
 
 export const QuizDashboard: React.FC<QuizDashboardProps> = ({ lang }) => {
-  const [results, setResults] = useState<ParsedResult[]>([]);
+  const [results, setResults] = useState<ParsedResult[]>(() => {
+    const saved = localStorage.getItem('quiz_results');
+    return saved ? JSON.parse(saved) : [];
+  });
   const [expandedRow, setExpandedRow] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const t = translations[lang];
+
+  // Save results to localStorage whenever they change
+  useEffect(() => {
+    localStorage.setItem('quiz_results', JSON.stringify(results));
+  }, [results]);
 
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
