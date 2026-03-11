@@ -12,6 +12,23 @@ export interface FlashcardSet {
   createdAt: number;
 }
 
+export interface QuizQuestion {
+  id: string;
+  question: string;
+  options: string[];
+  correctOptionIndex: number;
+  createdAt: number;
+}
+
+export interface QuizSet {
+  id: string;
+  title: string;
+  questions: QuizQuestion[];
+  timeLimit: number; // in seconds
+  createdAt: number;
+}
+
 export type Theme = 'light' | 'dark';
 export type ViewMode = 'manage' | 'present';
 export type Language = 'ar' | 'en';
+export type AppMode = 'home' | 'flashcards' | 'quizzes';
