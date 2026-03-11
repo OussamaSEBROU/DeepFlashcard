@@ -152,19 +152,23 @@ export const QuizPresentationView: React.FC<QuizPresentationViewProps> = ({ ques
   };
 
   const downloadCSV = () => {
-    const headers = ['Question', 'Selected Answer(s)', 'Correct Answer(s)', 'Result'];
+    const headers = ['QuizTitle', 'StudentName', 'Score', 'TotalQuestions', 'Date', 'Question', 'Selected', 'Correct', 'IsCorrect'];
+    const dateStr = new Date().toISOString();
+    const quizTitle = 'Quiz'; // Can be passed as prop if needed
+    
     const rows = userAnswers.map(ans => [
+      `"${quizTitle.replace(/"/g, '""')}"`,
+      `"${userName.replace(/"/g, '""')}"`,
+      score,
+      questions.length,
+      `"${dateStr}"`,
       `"${ans.question.replace(/"/g, '""')}"`,
-      `"${ans.selected.join(', ').replace(/"/g, '""')}"`,
-      `"${ans.correct.join(', ').replace(/"/g, '""')}"`,
-      ans.isCorrect ? 'Correct' : 'Incorrect'
+      `"${ans.selected.join(' | ').replace(/"/g, '""')}"`,
+      `"${ans.correct.join(' | ').replace(/"/g, '""')}"`,
+      ans.isCorrect
     ]);
     
     const csvContent = [
-      `Name: ${userName || 'Anonymous'}`,
-      `Score: ${score}/${questions.length}`,
-      `Date: ${new Date().toLocaleString()}`,
-      '',
       headers.join(','),
       ...rows.map(e => e.join(','))
     ].join('\n');
@@ -192,7 +196,7 @@ export const QuizPresentationView: React.FC<QuizPresentationViewProps> = ({ ques
             {lang === 'ar' ? 'مرحباً بك في الاختبار' : 'Welcome to the Quiz'}
           </h2>
           <p className="text-zinc-500 dark:text-zinc-400 font-medium mb-8">
-            {lang === 'ar' ? 'يرجى إدخال اسمك ولقبك للبدء' : 'Please enter your full name to start'}
+            {lang === 'ar' ? 'يرجى إدخال اسمك ولقبك للبدء. سيبدأ الاختبار ويبدأ عداد الوقت فور الضغط على زر الانطلاق.' : 'Please enter your full name to start. The quiz and timer will begin immediately after clicking start.'}
           </p>
           
           <input
@@ -245,14 +249,24 @@ export const QuizPresentationView: React.FC<QuizPresentationViewProps> = ({ ques
             <Trophy size={48} className="text-primary" />
           </div>
           <h2 className={`font-black text-black dark:text-white mb-2 ${lang === 'ar' ? 'text-2xl md:text-4xl' : 'text-3xl md:text-4xl'}`}>{t.quizResults}</h2>
-          <p className="text-zinc-500 dark:text-zinc-400 font-medium mb-8">{t.score}</p>
           
-          <div className="text-6xl md:text-7xl font-black text-primary mb-4 tracking-tighter">
-            {percentage}%
-          </div>
-          <p className="text-xl font-bold text-zinc-700 dark:text-zinc-300 mb-10">
-            {score} / {questions.length} {t.correct}
-          </p>
+          {isCreator ? (
+            <>
+              <p className="text-zinc-500 dark:text-zinc-400 font-medium mb-8">{t.score}</p>
+              <div className="text-6xl md:text-7xl font-black text-primary mb-4 tracking-tighter">
+                {percentage}%
+              </div>
+              <p className="text-xl font-bold text-zinc-700 dark:text-zinc-300 mb-10">
+                {score} / {questions.length} {t.correct}
+              </p>
+            </>
+          ) : (
+            <p className="text-lg font-bold text-zinc-500 dark:text-zinc-400 mb-10 mt-6 max-w-md mx-auto">
+              {lang === 'ar' 
+                ? 'لقد أكملت الاختبار بنجاح. يرجى تحميل ملف النتيجة وإرساله للأستاذ.' 
+                : 'You have successfully completed the quiz. Please download your result file and send it to your teacher.'}
+            </p>
+          )}
           
           <div className="flex flex-col gap-4">
             <button 
@@ -260,22 +274,26 @@ export const QuizPresentationView: React.FC<QuizPresentationViewProps> = ({ ques
               className="w-full py-4 rounded-2xl bg-zinc-800 text-white font-black text-lg hover:bg-zinc-700 transition-all shadow-lg flex items-center justify-center gap-2"
             >
               <Download size={20} />
-              <span>{lang === 'ar' ? 'تحميل النتائج (CSV)' : 'Download Results (CSV)'}</span>
+              <span>{lang === 'ar' ? 'تحميل النتيجة (CSV)' : 'Download Result (CSV)'}</span>
             </button>
-            <button 
-              onClick={restartQuiz}
-              className="w-full py-4 rounded-2xl bg-primary text-white font-black text-lg hover:bg-primary-dark transition-all shadow-lg shadow-primary/30 flex items-center justify-center gap-2"
-            >
-              <RotateCcw size={20} />
-              <span>{t.playAgain}</span>
-            </button>
-            {onFinish && isCreator && (
-              <button 
-                onClick={onFinish}
-                className="w-full py-4 rounded-2xl bg-zinc-100 dark:bg-zinc-800 text-accent font-black text-lg hover:bg-zinc-200 dark:hover:bg-zinc-700 transition-all flex items-center justify-center gap-2"
-              >
-                <span>{t.backToFiles}</span>
-              </button>
+            {isCreator && (
+              <>
+                <button 
+                  onClick={restartQuiz}
+                  className="w-full py-4 rounded-2xl bg-primary text-white font-black text-lg hover:bg-primary-dark transition-all shadow-lg shadow-primary/30 flex items-center justify-center gap-2"
+                >
+                  <RotateCcw size={20} />
+                  <span>{t.playAgain}</span>
+                </button>
+                {onFinish && (
+                  <button 
+                    onClick={onFinish}
+                    className="w-full py-4 rounded-2xl bg-zinc-100 dark:bg-zinc-800 text-accent font-black text-lg hover:bg-zinc-200 dark:hover:bg-zinc-700 transition-all flex items-center justify-center gap-2"
+                  >
+                    <span>{t.backToFiles}</span>
+                  </button>
+                )}
+              </>
             )}
           </div>
         </motion.div>
@@ -336,7 +354,10 @@ export const QuizPresentationView: React.FC<QuizPresentationViewProps> = ({ ques
             whileHover={{ scale: 1.1 }}
             whileTap={{ scale: 0.9 }}
             onClick={() => {
-              const minimalString = questions.map(q => `${q.question}\x1F${q.options.join('\x1F')}\x1F${q.correctOptionIndex}`).join('\x1E');
+              const minimalString = questions.map(q => {
+                const correctIndices = q.correctOptionIndices ? q.correctOptionIndices.join(',') : q.correctOptionIndex;
+                return `${q.question}\x1F${q.options.join('\x1F')}\x1F${correctIndices}`;
+              }).join('\x1E');
               const shareableData = LZString.compressToEncodedURIComponent(minimalString);
               const url = `${window.location.origin}${window.location.pathname}?quiz=${shareableData}&time=${timeLimit}`;
               navigator.clipboard.writeText(url);
