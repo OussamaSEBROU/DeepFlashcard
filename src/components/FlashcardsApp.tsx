@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { motion, AnimatePresence } from 'motion/react';
+import { motion, AnimatePresence, Reorder } from 'motion/react';
 import { Layout, BookOpen, Layers, Trash2, Play, Settings2, FolderPlus, Folder, ChevronRight, Plus, Edit3, X, AlertCircle } from 'lucide-react';
 import LZString from 'lz-string';
 import { Flashcard, FlashcardSet, ViewMode, Language, AppMode } from '../types';
@@ -201,6 +201,11 @@ export const FlashcardsApp: React.FC<FlashcardsAppProps> = ({ lang, onBackToHome
       [newCards[index], newCards[index + 1]] = [newCards[index + 1], newCards[index]];
       return { ...s, cards: newCards };
     }));
+  };
+
+  const handleReorderCards = (newCards: Flashcard[]) => {
+    if (!activeSetId) return;
+    setSets(sets.map(s => s.id === activeSetId ? { ...s, cards: newCards } : s));
   };
 
   const activeSet = sets.find(s => s.id === activeSetId);
@@ -544,30 +549,33 @@ export const FlashcardsApp: React.FC<FlashcardsAppProps> = ({ lang, onBackToHome
 
                     {activeSet.id !== 'shared-set' && <FlashcardForm onAdd={addCard} lang={lang} />}
 
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-8">
+                    <Reorder.Group 
+                      axis="y" 
+                      values={activeSet.cards} 
+                      onReorder={handleReorderCards}
+                      className="flex flex-col gap-4 md:gap-8"
+                    >
                       <AnimatePresence mode="popLayout">
-                        {activeSet.cards.map((card) => (
-                          <motion.div
+                        {activeSet.cards.map((card, index) => (
+                          <Reorder.Item
                             key={card.id}
-                            layout
-                            initial={{ opacity: 0, y: 30 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            exit={{ opacity: 0, scale: 0.8 }}
-                            className="floating-3d"
+                            value={card}
+                            className="relative floating-3d cursor-grab active:cursor-grabbing"
                           >
+                            <div className={`absolute top-4 ${lang === 'ar' ? 'right-4' : 'left-4'} z-20 bg-black/10 dark:bg-white/10 text-black dark:text-white w-8 h-8 rounded-full flex items-center justify-center font-black`}>
+                              {index + 1}
+                            </div>
                             <FlashcardComponent 
                               card={card} 
                               onDelete={confirmDeleteCard} 
                               onEdit={(c) => { setCardToEdit(c); setIsEditCardModalOpen(true); }} 
-                              onMoveUp={moveCardUp}
-                              onMoveDown={moveCardDown}
                               lang={lang}
                               readonly={activeSet.id === 'shared-set'}
                             />
-                          </motion.div>
+                          </Reorder.Item>
                         ))}
                       </AnimatePresence>
-                    </div>
+                    </Reorder.Group>
 
                     {activeSet.cards.length === 0 && (
                       <div className="flex flex-col items-center justify-center py-32 text-zinc-200 dark:text-zinc-800">
