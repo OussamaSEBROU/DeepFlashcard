@@ -5,14 +5,14 @@ import { Language } from '../types';
 import { translations } from '../translations';
 
 interface QuizFormProps {
-  onAdd: (question: string, options: string[], correctOptionIndex: number) => void;
+  onAdd: (question: string, options: string[], correctOptionIndices: number[]) => void;
   lang: Language;
 }
 
 export const QuizForm: React.FC<QuizFormProps> = ({ onAdd, lang }) => {
   const [question, setQuestion] = useState('');
   const [options, setOptions] = useState<string[]>(['', '']);
-  const [correctOptionIndex, setCorrectOptionIndex] = useState(0);
+  const [correctOptionIndices, setCorrectOptionIndices] = useState<number[]>([0]);
   const t = translations[lang];
 
   const handleAddOption = () => {
@@ -25,11 +25,16 @@ export const QuizForm: React.FC<QuizFormProps> = ({ onAdd, lang }) => {
     if (options.length > 2) {
       const newOptions = options.filter((_, i) => i !== index);
       setOptions(newOptions);
-      if (correctOptionIndex >= newOptions.length) {
-        setCorrectOptionIndex(newOptions.length - 1);
-      } else if (correctOptionIndex === index) {
-        setCorrectOptionIndex(0);
+      
+      // Update correct indices
+      let newIndices = correctOptionIndices
+        .filter(i => i !== index)
+        .map(i => i > index ? i - 1 : i);
+        
+      if (newIndices.length === 0) {
+        newIndices = [0];
       }
+      setCorrectOptionIndices(newIndices);
     }
   };
 
@@ -39,13 +44,24 @@ export const QuizForm: React.FC<QuizFormProps> = ({ onAdd, lang }) => {
     setOptions(newOptions);
   };
 
+  const toggleCorrectOption = (index: number) => {
+    setCorrectOptionIndices(prev => {
+      if (prev.includes(index)) {
+        if (prev.length === 1) return prev; // Must have at least one correct option
+        return prev.filter(i => i !== index);
+      } else {
+        return [...prev, index];
+      }
+    });
+  };
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (question.trim() && options.every(opt => opt.trim())) {
-      onAdd(question.trim(), options.map(opt => opt.trim()), correctOptionIndex);
+    if (question.trim() && options.every(opt => opt.trim()) && correctOptionIndices.length > 0) {
+      onAdd(question.trim(), options.map(opt => opt.trim()), correctOptionIndices);
       setQuestion('');
       setOptions(['', '']);
-      setCorrectOptionIndex(0);
+      setCorrectOptionIndices([0]);
     }
   };
 
@@ -75,8 +91,8 @@ export const QuizForm: React.FC<QuizFormProps> = ({ onAdd, lang }) => {
               <div key={index} className="flex items-center gap-3">
                 <button
                   type="button"
-                  onClick={() => setCorrectOptionIndex(index)}
-                  className={`flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center transition-all ${correctOptionIndex === index ? 'bg-emerald-500 text-white shadow-lg shadow-emerald-500/30' : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-400 hover:bg-zinc-200 dark:hover:bg-zinc-700'}`}
+                  onClick={() => toggleCorrectOption(index)}
+                  className={`flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center transition-all ${correctOptionIndices.includes(index) ? 'bg-emerald-500 text-white shadow-lg shadow-emerald-500/30' : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-400 hover:bg-zinc-200 dark:hover:bg-zinc-700'}`}
                   title={t.correctOption}
                 >
                   <CheckCircle2 size={16} />
@@ -86,7 +102,7 @@ export const QuizForm: React.FC<QuizFormProps> = ({ onAdd, lang }) => {
                   value={option}
                   onChange={(e) => handleOptionChange(index, e.target.value)}
                   placeholder={`${t.options} ${index + 1}`}
-                  className={`flex-1 px-4 py-3 rounded-xl bg-zinc-50 dark:bg-zinc-800/50 border-2 outline-none transition-all font-medium ${correctOptionIndex === index ? 'border-emerald-500/50 text-emerald-700 dark:text-emerald-400' : 'border-zinc-100 dark:border-zinc-800 text-black dark:text-white focus:border-accent'}`}
+                  className={`flex-1 px-4 py-3 rounded-xl bg-zinc-50 dark:bg-zinc-800/50 border-2 outline-none transition-all font-medium ${correctOptionIndices.includes(index) ? 'border-emerald-500/50 text-emerald-700 dark:text-emerald-400' : 'border-zinc-100 dark:border-zinc-800 text-black dark:text-white focus:border-accent'}`}
                 />
                 {options.length > 2 && (
                   <button
