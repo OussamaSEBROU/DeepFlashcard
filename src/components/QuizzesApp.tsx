@@ -48,6 +48,7 @@ export const QuizzesApp: React.FC<QuizzesAppProps> = ({ lang, onBackToHome }) =>
   // Data State for Modals
   const [newSetName, setNewSetName] = useState('');
   const [newSetTimeLimit, setNewSetTimeLimit] = useState(0);
+  const [newSetAllowedRetries, setNewSetAllowedRetries] = useState(0);
   const [setToEdit, setSetToEdit] = useState<QuizSet | null>(null);
   const [setToDeleteId, setSetToDeleteId] = useState<string | null>(null);
   const [questionToEdit, setQuestionToEdit] = useState<QuizQuestion | null>(null);
@@ -69,6 +70,7 @@ export const QuizzesApp: React.FC<QuizzesAppProps> = ({ lang, onBackToHome }) =>
     const params = new URLSearchParams(window.location.search);
     const sharedQuiz = params.get('quiz');
     const timeLimitParam = params.get('time');
+    const retriesParam = params.get('retries');
     if (sharedQuiz) {
       try {
         const decompressed = LZString.decompressFromEncodedURIComponent(sharedQuiz);
@@ -95,6 +97,7 @@ export const QuizzesApp: React.FC<QuizzesAppProps> = ({ lang, onBackToHome }) =>
           title: params.get('title') || t.sharedSet || 'Shared Quiz',
           questions,
           timeLimit: timeLimitParam ? parseInt(timeLimitParam, 10) : 0,
+          allowedRetries: retriesParam ? parseInt(retriesParam, 10) : 0,
           createdAt: Date.now(),
         };
         
@@ -116,18 +119,20 @@ export const QuizzesApp: React.FC<QuizzesAppProps> = ({ lang, onBackToHome }) =>
       title: newSetName.trim(),
       questions: [],
       timeLimit: newSetTimeLimit,
+      allowedRetries: newSetAllowedRetries,
       createdAt: Date.now(),
     };
     setSets([newSet, ...sets]);
     setActiveSetId(newSet.id);
     setNewSetName('');
     setNewSetTimeLimit(0);
+    setNewSetAllowedRetries(0);
     setIsNewSetModalOpen(false);
   };
 
   const updateSet = () => {
     if (!setToEdit || !setToEdit.title.trim()) return;
-    setSets(sets.map(s => s.id === setToEdit.id ? { ...s, title: setToEdit.title.trim(), timeLimit: setToEdit.timeLimit } : s));
+    setSets(sets.map(s => s.id === setToEdit.id ? { ...s, title: setToEdit.title.trim(), timeLimit: setToEdit.timeLimit, allowedRetries: setToEdit.allowedRetries } : s));
     setIsEditSetModalOpen(false);
     setSetToEdit(null);
   };
@@ -239,13 +244,23 @@ export const QuizzesApp: React.FC<QuizzesAppProps> = ({ lang, onBackToHome }) =>
                 placeholder={t.quizName || 'Quiz Name'}
                 className="w-full px-6 py-4 rounded-2xl bg-zinc-50 dark:bg-zinc-800 border-2 border-zinc-100 dark:border-zinc-800 text-black dark:text-white focus:border-accent outline-none transition-all mb-4 font-bold"
               />
-              <div className="mb-8">
+              <div className="mb-4">
                 <label className="block text-xs font-black text-accent uppercase tracking-widest mb-2">{t.timeLimit || 'Time Limit (seconds, 0 for unlimited)'}</label>
                 <input
                   type="number"
                   min="0"
                   value={newSetTimeLimit}
                   onChange={(e) => setNewSetTimeLimit(parseInt(e.target.value) || 0)}
+                  className="w-full px-6 py-4 rounded-2xl bg-zinc-50 dark:bg-zinc-800 border-2 border-zinc-100 dark:border-zinc-800 text-black dark:text-white focus:border-accent outline-none transition-all font-bold"
+                />
+              </div>
+              <div className="mb-8">
+                <label className="block text-xs font-black text-accent uppercase tracking-widest mb-2">{lang === 'ar' ? 'عدد المحاولات المسموحة (0 لعدد غير محدود)' : 'Allowed Retries (0 for unlimited)'}</label>
+                <input
+                  type="number"
+                  min="0"
+                  value={newSetAllowedRetries}
+                  onChange={(e) => setNewSetAllowedRetries(parseInt(e.target.value) || 0)}
                   className="w-full px-6 py-4 rounded-2xl bg-zinc-50 dark:bg-zinc-800 border-2 border-zinc-100 dark:border-zinc-800 text-black dark:text-white focus:border-accent outline-none transition-all font-bold"
                 />
               </div>
@@ -285,13 +300,23 @@ export const QuizzesApp: React.FC<QuizzesAppProps> = ({ lang, onBackToHome }) =>
                 onChange={(e) => setSetToEdit({ ...setToEdit, title: e.target.value })}
                 className="w-full px-6 py-4 rounded-2xl bg-zinc-50 dark:bg-zinc-800 border-2 border-zinc-100 dark:border-zinc-800 text-black dark:text-white focus:border-accent outline-none transition-all mb-4 font-bold"
               />
-              <div className="mb-8">
+              <div className="mb-4">
                 <label className="block text-xs font-black text-accent uppercase tracking-widest mb-2">{t.timeLimit || 'Time Limit (seconds, 0 for unlimited)'}</label>
                 <input
                   type="number"
                   min="0"
                   value={setToEdit.timeLimit}
                   onChange={(e) => setSetToEdit({ ...setToEdit, timeLimit: parseInt(e.target.value) || 0 })}
+                  className="w-full px-6 py-4 rounded-2xl bg-zinc-50 dark:bg-zinc-800 border-2 border-zinc-100 dark:border-zinc-800 text-black dark:text-white focus:border-accent outline-none transition-all font-bold"
+                />
+              </div>
+              <div className="mb-8">
+                <label className="block text-xs font-black text-accent uppercase tracking-widest mb-2">{lang === 'ar' ? 'عدد المحاولات المسموحة (0 لعدد غير محدود)' : 'Allowed Retries (0 for unlimited)'}</label>
+                <input
+                  type="number"
+                  min="0"
+                  value={setToEdit.allowedRetries || 0}
+                  onChange={(e) => setSetToEdit({ ...setToEdit, allowedRetries: parseInt(e.target.value) || 0 })}
                   className="w-full px-6 py-4 rounded-2xl bg-zinc-50 dark:bg-zinc-800 border-2 border-zinc-100 dark:border-zinc-800 text-black dark:text-white focus:border-accent outline-none transition-all font-bold"
                 />
               </div>
@@ -637,6 +662,11 @@ export const QuizzesApp: React.FC<QuizzesAppProps> = ({ lang, onBackToHome }) =>
                             {t.timeLimit || 'Time Limit'}: {activeSet.timeLimit}s
                           </p>
                         )}
+                        {(activeSet.allowedRetries ?? 0) > 0 && (
+                          <p className="text-sm font-bold text-zinc-500 mt-1">
+                            {lang === 'ar' ? 'المحاولات المسموحة' : 'Allowed Retries'}: {activeSet.allowedRetries}
+                          </p>
+                        )}
                       </div>
                       {activeSet.id !== 'shared-quiz' && (
                         <div className="flex flex-wrap gap-2 mt-4 md:mt-0">
@@ -743,6 +773,7 @@ export const QuizzesApp: React.FC<QuizzesAppProps> = ({ lang, onBackToHome }) =>
                 <QuizPresentationView 
                   questions={activeSet.questions} 
                   timeLimit={activeSet.timeLimit} 
+                  allowedRetries={activeSet.allowedRetries}
                   lang={lang} 
                   onFinish={() => setActiveSetId(null)}
                   isCreator={activeSet.id !== 'shared-quiz'}
