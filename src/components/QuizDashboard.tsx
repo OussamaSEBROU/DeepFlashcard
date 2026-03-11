@@ -46,32 +46,56 @@ export const QuizDashboard: React.FC<QuizDashboardProps> = ({ lang }) => {
 
   const parseCSV = (text: string) => {
     try {
-      const lines = text.split('\n').filter(l => l.trim());
-      if (lines.length < 2) return;
-
-      // Simple CSV parser for our specific format
-      const parseLine = (line: string) => {
-        const row: string[] = [];
+      // Robust CSV parser that handles newlines within quotes
+      const parseCSVText = (csvText: string) => {
+        const rows: string[][] = [];
+        let currentRow: string[] = [];
+        let currentCell = '';
         let inQuotes = false;
-        let current = '';
-        for (let i = 0; i < line.length; i++) {
-          const char = line[i];
+        
+        for (let i = 0; i < csvText.length; i++) {
+          const char = csvText[i];
+          const nextChar = csvText[i + 1];
+          
           if (char === '"') {
-            inQuotes = !inQuotes;
+            if (inQuotes && nextChar === '"') {
+              // Escaped quote
+              currentCell += '"';
+              i++; // Skip next quote
+            } else {
+              // Toggle quotes
+              inQuotes = !inQuotes;
+            }
           } else if (char === ',' && !inQuotes) {
-            row.push(current);
-            current = '';
+            // End of cell
+            currentRow.push(currentCell);
+            currentCell = '';
+          } else if ((char === '\n' || (char === '\r' && nextChar === '\n')) && !inQuotes) {
+            // End of row
+            if (char === '\r') i++; // Skip \n
+            currentRow.push(currentCell);
+            rows.push(currentRow);
+            currentRow = [];
+            currentCell = '';
           } else {
-            current += char;
+            // Normal character
+            currentCell += char;
           }
         }
-        row.push(current);
-        return row.map(val => val.replace(/^"|"$/g, '').replace(/""/g, '"'));
+        
+        // Push last cell and row if not empty
+        if (currentCell !== '' || currentRow.length > 0) {
+          currentRow.push(currentCell);
+          rows.push(currentRow);
+        }
+        
+        return rows.filter(row => row.some(cell => cell.trim() !== ''));
       };
 
-      const headers = parseLine(lines[0]);
-      const dataRows = lines.slice(1).map(parseLine);
+      const allRows = parseCSVText(text);
+      if (allRows.length < 2) return;
 
+      const dataRows = allRows.slice(1);
       if (dataRows.length === 0) return;
 
       // Extract metadata from the first row
@@ -83,9 +107,9 @@ export const QuizDashboard: React.FC<QuizDashboardProps> = ({ lang }) => {
       const date = firstRow[4];
 
       const details = dataRows.map(row => ({
-        question: row[5],
-        selected: row[6],
-        correct: row[7],
+        question: row[5] || '',
+        selected: row[6] || '',
+        correct: row[7] || '',
         isCorrect: row[8] === 'true'
       }));
 
