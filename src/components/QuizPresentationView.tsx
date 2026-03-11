@@ -12,9 +12,10 @@ interface QuizPresentationViewProps {
   lang: Language;
   onFinish?: () => void;
   isCreator?: boolean;
+  quizTitle?: string;
 }
 
-export const QuizPresentationView: React.FC<QuizPresentationViewProps> = ({ questions, timeLimit, lang, onFinish, isCreator }) => {
+export const QuizPresentationView: React.FC<QuizPresentationViewProps> = ({ questions, timeLimit, lang, onFinish, isCreator, quizTitle = 'Quiz' }) => {
   const [hasStarted, setHasStarted] = useState(isCreator);
   const [userName, setUserName] = useState('');
   const [currentIndex, setCurrentIndex] = useState(0);
@@ -154,7 +155,6 @@ export const QuizPresentationView: React.FC<QuizPresentationViewProps> = ({ ques
   const downloadCSV = () => {
     const headers = ['QuizTitle', 'StudentName', 'Score', 'TotalQuestions', 'Date', 'Question', 'Selected', 'Correct', 'IsCorrect'];
     const dateStr = new Date().toISOString();
-    const quizTitle = 'Quiz'; // Can be passed as prop if needed
     
     const rows = userAnswers.map(ans => [
       `"${quizTitle.replace(/"/g, '""')}"`,
@@ -359,7 +359,7 @@ export const QuizPresentationView: React.FC<QuizPresentationViewProps> = ({ ques
                 return `${q.question}\x1F${q.options.join('\x1F')}\x1F${correctIndices}`;
               }).join('\x1E');
               const shareableData = LZString.compressToEncodedURIComponent(minimalString);
-              const url = `${window.location.origin}${window.location.pathname}?quiz=${shareableData}&time=${timeLimit}`;
+              const url = `${window.location.origin}${window.location.pathname}?quiz=${shareableData}&time=${timeLimit}&title=${encodeURIComponent(quizTitle)}`;
               navigator.clipboard.writeText(url);
               setIsCopied(true);
               setTimeout(() => setIsCopied(false), 2000);
