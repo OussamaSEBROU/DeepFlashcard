@@ -215,7 +215,8 @@ export const PresentationView: React.FC<PresentationViewProps> = ({ cards, lang 
             whileHover={{ scale: 1.1 }}
             whileTap={{ scale: 0.9 }}
             onClick={() => {
-              const shareableData = LZString.compressToEncodedURIComponent(JSON.stringify(cards));
+              const minimalData = cards.map(c => [c.question, c.answer]);
+              const shareableData = LZString.compressToEncodedURIComponent(JSON.stringify(minimalData));
               const url = `${window.location.origin}${window.location.pathname}?cards=${shareableData}`;
               navigator.clipboard.writeText(url);
               setIsCopied(true);
