@@ -6,6 +6,7 @@ import { QuizQuestion, QuizSet, ViewMode, Language } from '../types';
 import { QuizQuestionComponent } from './QuizQuestionComponent';
 import { QuizForm } from './QuizForm';
 import { QuizPresentationView } from './QuizPresentationView';
+import { QuizDashboard } from './QuizDashboard';
 import { translations } from '../translations';
 
 interface QuizzesAppProps {
@@ -74,11 +75,17 @@ export const QuizzesApp: React.FC<QuizzesAppProps> = ({ lang, onBackToHome }) =>
         const parsed = decompressed.split('\x1E').map(qStr => qStr.split('\x1F'));
         
         const questions: QuizQuestion[] = parsed.map((item: any) => {
+          const correctOptionString = item[item.length - 1];
+          const correctOptionIndices = correctOptionString.includes(',') 
+            ? correctOptionString.split(',').map((i: string) => parseInt(i, 10))
+            : [parseInt(correctOptionString, 10)];
+            
           return {
             id: crypto.randomUUID(),
             question: item[0],
             options: item.slice(1, item.length - 1),
-            correctOptionIndex: parseInt(item[item.length - 1], 10),
+            correctOptionIndex: correctOptionIndices[0], // Legacy
+            correctOptionIndices,
             createdAt: Date.now()
           };
         });
@@ -139,13 +146,14 @@ export const QuizzesApp: React.FC<QuizzesAppProps> = ({ lang, onBackToHome }) =>
   };
 
   // Question Operations
-  const addQuestion = (question: string, options: string[], correctOptionIndex: number) => {
+  const addQuestion = (question: string, options: string[], correctOptionIndices: number[]) => {
     if (!activeSetId) return;
     const newQuestion: QuizQuestion = {
       id: crypto.randomUUID(),
       question,
       options,
-      correctOptionIndex,
+      correctOptionIndex: correctOptionIndices[0], // Legacy
+      correctOptionIndices,
       createdAt: Date.now(),
     };
     setSets(sets.map(s => s.id === activeSetId ? { ...s, questions: [newQuestion, ...s.questions] } : s));
@@ -365,13 +373,24 @@ export const QuizzesApp: React.FC<QuizzesAppProps> = ({ lang, onBackToHome }) =>
                   <label className="block text-xs font-black text-accent uppercase tracking-widest mr-1">{t.options || 'Options'}</label>
                   {questionToEdit.options.map((option, index) => (
                     <div key={index} className="flex items-center gap-2">
-                      <input
-                        type="radio"
-                        name="editCorrectOption"
-                        checked={questionToEdit.correctOptionIndex === index}
-                        onChange={() => setQuestionToEdit({ ...questionToEdit, correctOptionIndex: index })}
-                        className="w-5 h-5 accent-accent"
-                      />
+                        <input
+                          type="checkbox"
+                          name="editCorrectOption"
+                          checked={questionToEdit.correctOptionIndices ? questionToEdit.correctOptionIndices.includes(index) : questionToEdit.correctOptionIndex === index}
+                          onChange={() => {
+                            const prevIndices = questionToEdit.correctOptionIndices || [questionToEdit.correctOptionIndex!];
+                            let newIndices = [...prevIndices];
+                            if (prevIndices.includes(index)) {
+                              if (prevIndices.length > 1) {
+                                newIndices = prevIndices.filter(i => i !== index);
+                              }
+                            } else {
+                              newIndices.push(index);
+                            }
+                            setQuestionToEdit({ ...questionToEdit, correctOptionIndices: newIndices, correctOptionIndex: newIndices[0] });
+                          }}
+                          className="w-5 h-5 accent-accent rounded"
+                        />
                       <input
                         type="text"
                         value={option}
@@ -386,10 +405,11 @@ export const QuizzesApp: React.FC<QuizzesAppProps> = ({ lang, onBackToHome }) =>
                         <button
                           onClick={() => {
                             const newOptions = questionToEdit.options.filter((_, i) => i !== index);
-                            let newCorrectIndex = questionToEdit.correctOptionIndex;
-                            if (newCorrectIndex === index) newCorrectIndex = 0;
-                            else if (newCorrectIndex > index) newCorrectIndex--;
-                            setQuestionToEdit({ ...questionToEdit, options: newOptions, correctOptionIndex: newCorrectIndex });
+                            let newIndices = (questionToEdit.correctOptionIndices || [questionToEdit.correctOptionIndex!])
+                              .filter(i => i !== index)
+                              .map(i => i > index ? i - 1 : i);
+                            if (newIndices.length === 0) newIndices = [0];
+                            setQuestionToEdit({ ...questionToEdit, options: newOptions, correctOptionIndices: newIndices, correctOptionIndex: newIndices[0] });
                           }}
                           className="p-3 text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-xl"
                         >
@@ -511,11 +531,28 @@ export const QuizzesApp: React.FC<QuizzesAppProps> = ({ lang, onBackToHome }) =>
             <Play size={16} />
             <span className="hidden md:inline">{t.present}</span>
           </button>
+          <button
+            onClick={() => setViewMode('dashboard')}
+            className={`flex items-center gap-1 md:gap-2 px-2 md:px-5 py-2 rounded-lg md:rounded-xl text-xs md:text-sm font-black transition-all ${viewMode === 'dashboard' ? 'bg-white dark:bg-zinc-800 text-primary shadow-md' : 'text-accent hover:text-black dark:hover:text-zinc-200'}`}
+          >
+            <Layout size={16} />
+            <span className="hidden md:inline">{t.dashboard || 'Dashboard'}</span>
+          </button>
         </div>
       </div>
 
       <AnimatePresence mode="wait">
-        {viewMode === 'manage' ? (
+        {viewMode === 'dashboard' ? (
+          <motion.div
+            key="dashboard"
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.95 }}
+            transition={{ duration: 0.5, type: 'spring' }}
+          >
+            <QuizDashboard lang={lang} />
+          </motion.div>
+        ) : viewMode === 'manage' ? (
           <motion.div
             key="manage"
             initial={{ opacity: 0, scale: 0.95 }}
