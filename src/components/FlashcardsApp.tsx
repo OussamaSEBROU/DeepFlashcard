@@ -527,7 +527,7 @@ export const FlashcardsApp: React.FC<FlashcardsAppProps> = ({ lang, onBackToHome
                           <BookOpen size={12} />
                           <span>{t.activeFile}</span>
                         </div>
-                        <h2 className="text-2xl md:text-5xl font-black text-black dark:text-white tracking-tighter">
+                        <h2 className={`font-black text-black dark:text-white tracking-tighter ${lang === 'ar' ? 'text-2xl md:text-4xl' : 'text-2xl md:text-5xl'}`}>
                           {activeSet.title}
                         </h2>
                       </div>
@@ -614,7 +614,7 @@ export const FlashcardsApp: React.FC<FlashcardsAppProps> = ({ lang, onBackToHome
                     <ChevronRight size={16} className={lang === 'en' ? 'rotate-180' : ''} />
                     <span>{t.backToFiles}</span>
                   </button>
-                  <h2 className="text-5xl md:text-6xl font-black text-black dark:text-white mb-6 tracking-tighter">
+                  <h2 className={`font-black text-black dark:text-white mb-6 tracking-tighter ${lang === 'ar' ? 'text-3xl md:text-5xl' : 'text-5xl md:text-6xl'}`}>
                     {t.presentingFile}: <span className="text-primary">{activeSet.title}</span>
                   </h2>
                   <p className="text-lg text-zinc-500 dark:text-zinc-400 font-medium">
@@ -630,7 +630,7 @@ export const FlashcardsApp: React.FC<FlashcardsAppProps> = ({ lang, onBackToHome
                     <Play size={16} fill="currentColor" />
                     <span>{t.libraryDesc}</span>
                   </div>
-                  <h2 className="text-5xl md:text-6xl font-black text-black dark:text-white mb-6 tracking-tighter">
+                  <h2 className={`font-black text-black dark:text-white mb-6 tracking-tighter ${lang === 'ar' ? 'text-3xl md:text-5xl' : 'text-5xl md:text-6xl'}`}>
                     {t.library} <span className="text-primary">{t.present}</span>
                   </h2>
                 </header>
